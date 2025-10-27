@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { HashLink } from "react-router-hash-link";
-import { noticeAPI } from "../services/api";
+import { noticeAPI, admissionAPI, API_BASE_URL } from "../services/api";
+import { useAuth } from "../context/AuthContext";
 
 const slides = [
   "./assets/images/College_pic.jpg",
@@ -12,9 +13,13 @@ const Home = () => {
   const [notices, setNotices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [currentSlide, setCurrentSlide] = useState(0);
+  const [admissionTemplate, setAdmissionTemplate] = useState(null);
+  const [admissionLoading, setAdmissionLoading] = useState(false);
+  const { user } = useAuth();
 
   useEffect(() => {
     fetchLatestNotices();
+    fetchAdmissionTemplate();
     const timer = setInterval(() => {
       setCurrentSlide((prev) => (prev + 1) % slides.length);
     }, 5000);
@@ -33,6 +38,27 @@ const Home = () => {
     }
   };
 
+  const fetchAdmissionTemplate = async () => {
+    setAdmissionLoading(true);
+    try {
+      const response = await admissionAPI.getDefaultTemplate();
+      setAdmissionTemplate(response.data);
+    } catch (error) {
+      console.error("Error fetching default admission template:", error);
+      try {
+        const listResponse = await admissionAPI.listTemplates();
+        const templates = listResponse.data || [];
+        if (templates.length > 0) {
+          setAdmissionTemplate(templates[0]);
+        }
+      } catch (listError) {
+        console.error("Error loading admission templates list:", listError);
+      }
+    } finally {
+      setAdmissionLoading(false);
+    }
+  };
+
   const nextSlide = () => {
     setCurrentSlide((prev) => (prev + 1) % slides.length);
   };
@@ -41,10 +67,50 @@ const Home = () => {
     setCurrentSlide((prev) => (prev - 1 + slides.length) % slides.length);
   };
 
+  const blankAdmissionUrl = admissionTemplate
+    ? admissionTemplate.blank_download_url ||
+      `${API_BASE_URL}/admissions/templates/${admissionTemplate.slug}/blank/`
+    : null;
+  const shouldShowAdmissionCta = !user && blankAdmissionUrl;
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Hero Section with Recent Notices and Image Slider */}
       <section className="container mx-auto px-4 py-8">
+        <div className="flex justify-end mb-4">
+          {shouldShowAdmissionCta ? (
+            <a
+              href={blankAdmissionUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 px-5 py-2 rounded-lg bg-green-600 text-white font-semibold shadow hover:bg-green-700 transition"
+            >
+              Fillup Admission Form
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M4 4v16h16M8 12l4 4 4-4M12 16V4"
+                />
+              </svg>
+            </a>
+          ) : (
+            !user && (
+              <button
+                disabled
+                className="inline-flex items-center px-5 py-2 rounded-lg bg-gray-300 text-gray-600 font-semibold cursor-not-allowed"
+              >
+                {admissionLoading ? "Preparing admission form..." : "Admission form unavailable"}
+              </button>
+            )
+          )}
+        </div>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Recent Notices Box */}
           <div className="lg:col-span-1">

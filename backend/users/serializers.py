@@ -1,6 +1,8 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from .models import Teacher, Student
+from classes.models import Class
+from academics.models import Subject
 
 User = get_user_model()
 
@@ -41,10 +43,50 @@ class TeacherRegistrationSerializer(serializers.ModelSerializer):
     phone = serializers.CharField()
     nid = serializers.CharField()
     image = serializers.ImageField(required=False)
+    teacher_id = serializers.CharField()
+    designation = serializers.CharField()
+    class_id = serializers.PrimaryKeyRelatedField(
+        source='preferred_class',
+        queryset=Class.objects.all(),
+        write_only=True
+    )
+    subject_id = serializers.PrimaryKeyRelatedField(
+        source='preferred_subject',
+        queryset=Subject.objects.all(),
+        write_only=True
+    )
     
     class Meta:
         model = Teacher
-        fields = ['email', 'password', 'first_name', 'last_name', 'phone', 'nid', 'image']
+        fields = [
+            'email', 'password', 'first_name', 'last_name', 'phone', 'nid',
+            'teacher_id', 'designation', 'class_id', 'subject_id', 'image'
+        ]
+
+    def validate_teacher_id(self, value):
+        normalized = value.strip()
+        if not normalized:
+            raise serializers.ValidationError('Teacher ID is required.')
+        exists = Teacher.objects.filter(teacher_id__iexact=normalized).exists()
+        if exists:
+            raise serializers.ValidationError('A teacher with this ID already exists.')
+        return normalized.upper()
+
+    def validate(self, attrs):
+        preferred_class = attrs.get('preferred_class')
+        preferred_subject = attrs.get('preferred_subject')
+
+        if not preferred_class:
+            raise serializers.ValidationError({'class_id': 'Class selection is required.'})
+        if not preferred_subject:
+            raise serializers.ValidationError({'subject_id': 'Subject selection is required.'})
+
+        if not preferred_subject.classes.filter(id=preferred_class.id).exists():
+            raise serializers.ValidationError({
+                'subject_id': 'Selected subject is not offered in the chosen class.'
+            })
+
+        return attrs
     
     def create(self, validated_data):
         # Extract user fields
@@ -68,9 +110,19 @@ class TeacherRegistrationSerializer(serializers.ModelSerializer):
         user = User(**user_data)
         user.set_password(password)
         user.save()
+
+        teacher_id = validated_data.pop('teacher_id').strip().upper()
         
         # Create teacher profile
-        teacher = Teacher.objects.create(user=user, **validated_data)
+        designation = validated_data.get('designation')
+        if designation is not None:
+            validated_data['designation'] = designation.strip()
+
+        teacher = Teacher.objects.create(
+            user=user,
+            teacher_id=teacher_id,
+            **validated_data
+        )
         return teacher
 
 
@@ -92,7 +144,20 @@ class StudentRegistrationSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Student
-        fields = ['email', 'password', 'first_name', 'last_name', 'phone', 'student_class', 'image']
+        fields = [
+            'email',
+            'password',
+            'first_name',
+            'last_name',
+            'phone',
+            'phone_number',
+            'student_class',
+            'date_of_birth',
+            'address',
+            'guardian_name',
+            'guardian_phone',
+            'image',
+        ]
     
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -134,14 +199,47 @@ class TeacherSerializer(serializers.ModelSerializer):
     """Serializer for Teacher model"""
     user = UserSerializer(read_only=True)
     assigned_classes = serializers.SerializerMethodField()
+    preferred_class_detail = serializers.SerializerMethodField()
+    preferred_subject_detail = serializers.SerializerMethodField()
     
     class Meta:
         model = Teacher
-        fields = ['id', 'user', 'nid', 'assigned_classes']
+        fields = [
+            'id',
+            'user',
+            'nid',
+            'teacher_id',
+            'designation',
+            'preferred_class',
+            'preferred_subject',
+            'preferred_class_detail',
+            'preferred_subject_detail',
+            'assigned_classes'
+        ]
+        read_only_fields = [
+            'preferred_class_detail',
+            'preferred_subject_detail',
+            'assigned_classes'
+        ]
     
     def get_assigned_classes(self, obj):
         from classes.serializers import ClassSerializer
         return ClassSerializer(obj.assigned_classes.all(), many=True).data
+
+    def get_preferred_class_detail(self, obj):
+        if obj.preferred_class:
+            from classes.serializers import ClassSerializer
+            return ClassSerializer(obj.preferred_class).data
+        return None
+
+    def get_preferred_subject_detail(self, obj):
+        if obj.preferred_subject:
+            return {
+                'id': obj.preferred_subject.id,
+                'name': obj.preferred_subject.name,
+                'code': obj.preferred_subject.code,
+            }
+        return None
 
 
 class PublicTeacherSerializer(serializers.ModelSerializer):
@@ -149,10 +247,11 @@ class PublicTeacherSerializer(serializers.ModelSerializer):
     full_name = serializers.SerializerMethodField()
     image = serializers.SerializerMethodField()
     assigned_classes = serializers.SerializerMethodField()
+    preferred_subject = serializers.SerializerMethodField()
 
     class Meta:
         model = Teacher
-        fields = ['id', 'full_name', 'image', 'assigned_classes']
+        fields = ['id', 'full_name', 'image', 'designation', 'preferred_subject', 'assigned_classes']
 
     def get_full_name(self, obj):
         return obj.user.get_full_name() or obj.user.username
@@ -175,6 +274,15 @@ class PublicTeacherSerializer(serializers.ModelSerializer):
             }
             for c in obj.assigned_classes.all()
         ]
+
+    def get_preferred_subject(self, obj):
+        if obj.preferred_subject:
+            return {
+                'id': obj.preferred_subject.id,
+                'name': obj.preferred_subject.name,
+                'code': obj.preferred_subject.code,
+            }
+        return None
 
 class StudentSerializer(serializers.ModelSerializer):
     """Serializer for Student model"""

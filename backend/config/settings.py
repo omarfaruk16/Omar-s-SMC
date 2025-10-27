@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     "materials",
     "academics",
     "fees",
+    "admissions",
 ]
 
 MIDDLEWARE = [

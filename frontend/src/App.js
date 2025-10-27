@@ -41,6 +41,7 @@ import ManageExams from './pages/admin/ManageExams';
 import ManageMarks from './pages/admin/ManageMarks';
 import TeacherAssignments from './pages/admin/TeacherAssignments';
 import ManageTeacherAssignments from './pages/admin/ManageTeacherAssignments';
+import ManageAdmissionForm from './pages/admin/ManageAdmissionForm';
 
 // Teacher Dashboard
 import TeacherDashboard from './pages/teacher/Dashboard';
@@ -203,6 +204,14 @@ function App() {
               element={
                 <PrivateRoute allowedRoles={['admin']}>
                   <ManageTeacherAssignments />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/admin/admission-form"
+              element={
+                <PrivateRoute allowedRoles={['admin']}>
+                  <ManageAdmissionForm />
                 </PrivateRoute>
               }
             />

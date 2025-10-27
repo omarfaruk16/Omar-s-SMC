@@ -133,6 +133,10 @@ const ManagePending = () => {
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Phone</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Teacher ID</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Designation</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Preferred Subject</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Preferred Class</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">NID</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
                     </tr>
@@ -145,6 +149,18 @@ const ManagePending = () => {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">{teacher.user.email}</td>
                         <td className="px-6 py-4 whitespace-nowrap">{teacher.user.phone || 'N/A'}</td>
+                        <td className="px-6 py-4 whitespace-nowrap">{teacher.teacher_id || 'N/A'}</td>
+                        <td className="px-6 py-4 whitespace-nowrap">{teacher.designation || 'N/A'}</td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          {teacher.preferred_subject_detail
+                            ? `${teacher.preferred_subject_detail.name}${teacher.preferred_subject_detail.code ? ` (${teacher.preferred_subject_detail.code})` : ''}`
+                            : 'N/A'}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          {teacher.preferred_class_detail
+                            ? `${teacher.preferred_class_detail.name}${teacher.preferred_class_detail.section ? ` - ${teacher.preferred_class_detail.section}` : ''}`
+                            : 'N/A'}
+                        </td>
                         <td className="px-6 py-4 whitespace-nowrap">{teacher.nid}</td>
                         <td className="px-6 py-4 whitespace-nowrap space-x-2">
                           <button

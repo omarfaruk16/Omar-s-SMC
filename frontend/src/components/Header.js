@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { noticeAPI } from "../services/api";
+import { noticeAPI, admissionAPI, API_BASE_URL } from "../services/api";
 
 const Header = () => {
   const { user, logout } = useAuth();
@@ -11,9 +11,12 @@ const Header = () => {
   const [loginDropdownOpen, setLoginDropdownOpen] = useState(false);
   const [notices, setNotices] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [admissionTemplate, setAdmissionTemplate] = useState(null);
+  const [admissionLoading, setAdmissionLoading] = useState(false);
 
   useEffect(() => {
     fetchLatestNotices();
+    fetchAdmissionTemplate();
   }, []);
 
   const fetchLatestNotices = async () => {
@@ -26,6 +29,34 @@ const Header = () => {
       setLoading(false);
     }
   };
+
+  const fetchAdmissionTemplate = async () => {
+    setAdmissionLoading(true);
+    try {
+      const response = await admissionAPI.getDefaultTemplate();
+      setAdmissionTemplate(response.data);
+    } catch (error) {
+      console.error("Error fetching default admission form template:", error);
+      try {
+        const listResponse = await admissionAPI.listTemplates();
+        const templates = listResponse.data || [];
+        if (templates.length > 0) {
+          setAdmissionTemplate(templates[0]);
+        }
+      } catch (listError) {
+        console.error("Error fetching admission templates list:", listError);
+      }
+    } finally {
+      setAdmissionLoading(false);
+    }
+  };
+
+  const blankAdmissionUrl = admissionTemplate
+    ? admissionTemplate.blank_download_url ||
+      `${API_BASE_URL}/admissions/templates/${admissionTemplate.slug}/blank/`
+    : null;
+
+  const shouldShowAdmissionCta = !user && blankAdmissionUrl;
 
   const handleLogout = () => {
     logout();
@@ -159,6 +190,27 @@ const Header = () => {
             >
               Contact
             </Link>
+            {shouldShowAdmissionCta ? (
+              <a
+                href={blankAdmissionUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-4 py-2 bg-green-600 text-white hover:bg-green-700 transition rounded"
+              >
+                Fillup Admission Form
+              </a>
+            ) : (
+              !user && (
+                <button
+                  type="button"
+                  disabled
+                  className="px-4 py-2 bg-gray-200 text-gray-500 rounded cursor-not-allowed"
+                  title={admissionLoading ? "Loading admission form..." : "Admission form unavailable"}
+                >
+                  Fillup Admission Form
+                </button>
+              )
+            )}
           </div>
 
           {/* Desktop Login/Register */}
@@ -308,6 +360,28 @@ const Header = () => {
               <Link to="/contact" className="px-4 py-2 text-gray-700 hover:bg-blue-50 rounded" onClick={() => setMobileMenuOpen(false)}>
                 Contact
               </Link>
+              {shouldShowAdmissionCta ? (
+                <a
+                  href={blankAdmissionUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-4 py-2 bg-green-600 text-white rounded text-center"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Fillup Admission Form
+                </a>
+              ) : (
+                !user && (
+                  <button
+                    type="button"
+                    disabled
+                    className="px-4 py-2 bg-gray-200 text-gray-500 rounded"
+                    title={admissionLoading ? "Loading admission form..." : "Admission form unavailable"}
+                  >
+                    Fillup Admission Form
+                  </button>
+                )
+              )}
 
               {user ? (
                 <>

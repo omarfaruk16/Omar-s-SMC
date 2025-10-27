@@ -39,6 +39,22 @@ class Teacher(models.Model):
     """Teacher profile model"""
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='teacher_profile')
     nid = models.CharField(max_length=20, unique=True, verbose_name='National ID')
+    teacher_id = models.CharField(max_length=30, unique=True, verbose_name='Teacher ID', null=True, blank=True)
+    designation = models.CharField(max_length=100, blank=True)
+    preferred_class = models.ForeignKey(
+        'classes.Class',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='preferred_teachers'
+    )
+    preferred_subject = models.ForeignKey(
+        'academics.Subject',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='preferred_teachers'
+    )
     assigned_classes = models.ManyToManyField('classes.Class', related_name='teachers', blank=True)
     # index_num = models.CharField(max_length=20, unique=True, verbose_name='Index Number', blank=True, null=True)
     # designation = models.CharField(max_length=100, blank=True, null=True, default='Teacher')
@@ -48,7 +64,8 @@ class Teacher(models.Model):
         ordering = ['user__first_name']
     
     def __str__(self):
-        return f"{self.user.get_full_name()} - Teacher"
+        identifier = self.teacher_id or 'Teacher'
+        return f"{self.user.get_full_name()} - {identifier}"
 
 
 class Student(models.Model):

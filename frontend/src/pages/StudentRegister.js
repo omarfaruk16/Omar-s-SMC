@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
@@ -18,8 +18,17 @@ const StudentRegister = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [admissionFormInfo, setAdmissionFormInfo] = useState(null);
+  const [downloadOpened, setDownloadOpened] = useState(false);
   const { registerStudent } = useAuth();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (success && admissionFormInfo?.download_url && !downloadOpened) {
+      window.open(admissionFormInfo.download_url, '_blank', 'noopener');
+      setDownloadOpened(true);
+    }
+  }, [success, admissionFormInfo, downloadOpened]);
 
   const handleChange = (e) => {
     setFormData({
@@ -48,7 +57,7 @@ const StudentRegister = () => {
     }
 
     try {
-      await registerStudent({
+      const result = await registerStudent({
         email: formData.email,
         password: formData.password,
         first_name: formData.first_name,
@@ -59,10 +68,17 @@ const StudentRegister = () => {
         guardian_name: formData.guardian_name,
         guardian_phone: formData.guardian_phone,
       });
+      if (!result.success) {
+        const apiError = result.error;
+        setError(
+          apiError?.email?.[0] ||
+          apiError?.detail ||
+          (typeof apiError === 'string' ? apiError : 'Registration failed. Please try again.')
+        );
+        return;
+      }
+      setAdmissionFormInfo(result.data?.admission_form || null);
       setSuccess(true);
-      setTimeout(() => {
-        navigate('/login');
-      }, 3000);
     } catch (err) {
       setError(
         err.response?.data?.email?.[0] ||
@@ -85,9 +101,56 @@ const StudentRegister = () => {
           </div>
           <h2 className="text-2xl font-bold text-gray-900 mb-2">Registration Successful!</h2>
           <p className="text-gray-600 mb-4">
-            Your account has been created and is pending admin approval. You will be notified once approved.
+            Your account has been created and is pending admin approval. Please download and review your admission form below.
           </p>
-          <p className="text-sm text-gray-500">Redirecting to login page...</p>
+          {admissionFormInfo?.template?.name && (
+            <p className="text-sm text-blue-600 font-semibold mb-3">
+              Template: {admissionFormInfo.template.name}
+            </p>
+          )}
+          {admissionFormInfo?.download_url ? (
+            <a
+              href={admissionFormInfo.download_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center justify-center gap-2 px-5 py-2 mb-4 rounded-lg bg-green-600 text-white font-semibold shadow hover:bg-green-700 transition"
+            >
+              Download My Admission Form
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M4 4v16h16M8 12l4 4 4-4M12 16V4"
+                />
+              </svg>
+            </a>
+          ) : (
+            <p className="text-sm text-gray-500 mb-4">
+              Admission form is being prepared. Please check back later in your email or contact the administration.
+            </p>
+          )}
+          {admissionFormInfo?.template?.blank_form_url && (
+            <a
+              href={admissionFormInfo.template.blank_form_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block text-sm text-blue-600 hover:text-blue-700 mb-4"
+            >
+              Download a blank admission form
+            </a>
+          )}
+          <button
+            onClick={() => navigate('/login')}
+            className="inline-flex items-center justify-center px-5 py-2 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700 transition"
+          >
+            Go to Login
+          </button>
         </div>
       </div>
     );

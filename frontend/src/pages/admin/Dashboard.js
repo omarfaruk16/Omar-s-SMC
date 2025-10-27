@@ -98,9 +98,20 @@ const Dashboard = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 py-8">
       <div className="container mx-auto px-4">
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">Admin Dashboard</h1>
-          <p className="text-gray-600">Overview of your school management system</p>
+        <div className="mb-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div>
+            <h1 className="text-4xl font-bold text-gray-900 mb-2">Admin Dashboard</h1>
+            <p className="text-gray-600">Overview of your school management system</p>
+          </div>
+          <Link
+            to="/admin/admission-form"
+            className="inline-flex items-center gap-2 px-5 py-2 rounded-lg bg-green-600 text-white font-semibold shadow hover:bg-green-700 transition"
+          >
+            Configure Admission Form
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+          </Link>
         </div>
 
         {/* Main Stats Cards - Clickable */}
@@ -181,6 +192,23 @@ const Dashboard = () => {
                 {stats.unassignedTeachers > 0 && (
                   <p className="text-xs text-orange-600 mt-1">{stats.unassignedTeachers} teachers unassigned</p>
                 )}
+              </div>
+            </div>
+          </Link>
+
+          <Link to="/admin/admission-form" className="bg-white rounded-xl shadow-md p-6 hover:shadow-lg transition-all duration-200 border-2 border-transparent hover:border-green-200">
+            <div className="flex items-center">
+              <div className="p-3 rounded-lg bg-green-100">
+                <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .843-3 1.882v.236c0 .299.132.584.363.79L12 14l2.637-3.092A1.04 1.04 0 0015 10.118v-.236C15 8.843 13.657 8 12 8z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 14v4m0 0l-2 2m2-2l2 2" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2h-5.586a1 1 0 00-.707.293L9 5.293A1 1 0 018.293 5H6a2 2 0 00-2 2v11.998A2 2 0 006 20z" />
+                </svg>
+              </div>
+              <div className="ml-4">
+                <p className="text-sm text-gray-600 font-medium">Admission Form</p>
+                <p className="text-2xl font-bold text-gray-900">Designer</p>
+                <p className="text-xs text-gray-500 mt-1">Update branding & fields</p>
               </div>
             </div>
           </Link>

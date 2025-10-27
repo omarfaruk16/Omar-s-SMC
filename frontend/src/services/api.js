@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
+export const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -133,6 +133,18 @@ export const materialAPI = {
   delete: (id) => api.delete(`/materials/${id}/`),
   addAttachment: (id, data) => api.post(`/materials/${id}/add-attachment/`, data),
   removeAttachment: (id, attachmentId) => api.delete(`/materials/${id}/remove-attachment/${attachmentId}/`),
+};
+
+// Admission Forms APIs
+export const admissionAPI = {
+  getDefaultTemplate: () => api.get('/admissions/templates/default/'),
+  listTemplates: () => api.get('/admissions/templates/'),
+  getTemplate: (slug) => api.get(`/admissions/templates/${slug}/`),
+  updateTemplate: (slug, data, config = {}) => api.patch(`/admissions/templates/${slug}/`, data, config),
+  createTemplate: (data, config = {}) => api.post('/admissions/templates/', data, config),
+  deleteTemplate: (slug) => api.delete(`/admissions/templates/${slug}/`),
+  getAvailableFields: () => api.get('/admissions/templates/available-fields/'),
+  downloadStudentForm: (slug, studentId) => api.get(`/admissions/templates/${slug}/students/${studentId}/filled/`, { responseType: 'blob' }),
 };
 
 // Teachers APIs

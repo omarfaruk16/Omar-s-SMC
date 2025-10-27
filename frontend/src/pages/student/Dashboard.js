@@ -1,9 +1,9 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import Calendar from '../../components/Calendar';
 import Modal from '../../components/Modal';
-import { attendanceAPI, timetableAPI, examAPI, markAPI } from '../../services/api';
+import { attendanceAPI, timetableAPI, examAPI, markAPI, admissionAPI, studentAPI } from '../../services/api';
 import { useToast } from '../../context/ToastContext';
 
 const StudentDashboard = () => {
@@ -18,6 +18,9 @@ const StudentDashboard = () => {
   const [modalOpen, setModalOpen] = useState(false);
   const [modalDate, setModalDate] = useState(null);
   const [recentMarks, setRecentMarks] = useState([]);
+  const [admissionTemplate, setAdmissionTemplate] = useState(null);
+  const [studentProfile, setStudentProfile] = useState(null);
+  const [downloadingAdmissionForm, setDownloadingAdmissionForm] = useState(false);
   const [stats, setStats] = useState({
     totalClasses: 0,
     presentCount: 0,
@@ -82,12 +85,70 @@ const StudentDashboard = () => {
     })();
   }, [year, month, toast]);
 
-  const menuItems = [
-    { title: 'Study Materials', path: '/student/materials', icon: '📚', description: 'Access class materials and resources', color: 'from-blue-500 to-blue-600' },
-    { title: 'Fees & Payments', path: '/student/fees', icon: '💰', description: 'View and pay your fees', color: 'from-green-500 to-emerald-600' },
-    { title: 'Attendance', path: '/student/attendance', icon: '✅', description: 'View your attendance', color: 'from-purple-500 to-indigo-600' },
-    { title: 'Timetable', path: '/student/timetable', icon: '🗓️', description: 'View class timetable', color: 'from-orange-500 to-amber-600' },
-  ];
+  useEffect(() => {
+    (async () => {
+      try {
+        const [templateRes, studentRes] = await Promise.all([
+          admissionAPI.getDefaultTemplate().catch(() => null),
+          studentAPI.getAll().catch(() => ({ data: [] })),
+        ]);
+
+        if (templateRes?.data) {
+          setAdmissionTemplate(templateRes.data);
+        }
+
+        const studentRecord = studentRes.data?.[0];
+        if (studentRecord) {
+          setStudentProfile(studentRecord);
+        }
+      } catch (error) {
+        console.error('Failed to prepare admission form data', error);
+      }
+    })();
+  }, []);
+
+  const handleDownloadAdmissionForm = useCallback(async () => {
+    if (!admissionTemplate || !studentProfile) {
+      toast.error('Admission form is not ready yet. Please try again later.');
+      return;
+    }
+
+    try {
+      setDownloadingAdmissionForm(true);
+      const response = await admissionAPI.downloadStudentForm(admissionTemplate.slug, studentProfile.id);
+      const blob = new Blob([response.data], { type: 'application/pdf' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `${admissionTemplate.slug}-admission-form.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Failed to download admission form', error);
+      toast.error('Unable to download your admission form right now.');
+    } finally {
+      setDownloadingAdmissionForm(false);
+    }
+  }, [admissionTemplate, studentProfile, toast]);
+
+  const menuItems = useMemo(() => [
+    { key: 'materials', title: 'Study Materials', path: '/student/materials', icon: '📚', description: 'Access class materials and resources', color: 'from-blue-500 to-blue-600' },
+    { key: 'fees', title: 'Fees & Payments', path: '/student/fees', icon: '💰', description: 'View and pay your fees', color: 'from-green-500 to-emerald-600' },
+    { key: 'attendance', title: 'Attendance', path: '/student/attendance', icon: '✅', description: 'View your attendance', color: 'from-purple-500 to-indigo-600' },
+    { key: 'timetable', title: 'Timetable', path: '/student/timetable', icon: '🗓️', description: 'View class timetable', color: 'from-orange-500 to-amber-600' },
+    {
+      key: 'admission-form',
+      title: 'Admission Form',
+      icon: '📝',
+      description: 'Download your pre-filled admission form PDF',
+      color: 'from-emerald-500 to-teal-600',
+      onClick: handleDownloadAdmissionForm,
+      disabled: !admissionTemplate || !studentProfile,
+      loading: downloadingAdmissionForm,
+    },
+  ], [handleDownloadAdmissionForm, admissionTemplate, studentProfile, downloadingAdmissionForm]);
 
   return (
     <>
@@ -284,22 +345,54 @@ const StudentDashboard = () => {
 
         {/* Action Cards with Modern Design */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {menuItems.map((item) => (
-            <Link
-              key={item.path}
-              to={item.path}
-              className={`bg-gradient-to-br ${item.color} p-6 rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 text-white`}
-            >
-              <div className="flex items-center justify-between mb-4">
-                <div className="text-5xl">{item.icon}</div>
-                <svg className="w-6 h-6 text-white opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                </svg>
-              </div>
-              <h3 className="text-2xl font-bold mb-2">{item.title}</h3>
-              <p className="text-white text-opacity-90 text-sm">{item.description}</p>
-            </Link>
-          ))}
+          {menuItems.map((item) => {
+            const Content = (
+              <>
+                <div className="flex items-center justify-between mb-4">
+                  <div className="text-5xl">{item.icon}</div>
+                  {item.loading ? (
+                    <svg className="w-6 h-6 text-white opacity-80 animate-spin" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                    </svg>
+                  ) : (
+                    <svg className="w-6 h-6 text-white opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  )}
+                </div>
+                <h3 className="text-2xl font-bold mb-2">{item.title}</h3>
+                <p className="text-white text-opacity-90 text-sm">{item.description}</p>
+              </>
+            );
+
+            const baseClasses = `bg-gradient-to-br ${item.color} p-6 rounded-xl shadow-lg transition-all duration-200 text-white`;
+
+            if (item.onClick) {
+              const disabled = item.disabled || item.loading;
+              return (
+                <button
+                  key={item.key}
+                  type="button"
+                  onClick={disabled ? undefined : item.onClick}
+                  disabled={disabled}
+                  className={`${baseClasses} text-left ${disabled ? 'opacity-60 cursor-not-allowed' : 'hover:shadow-xl transform hover:scale-105'}`}
+                >
+                  {Content}
+                </button>
+              );
+            }
+
+            return (
+              <Link
+                key={item.key}
+                to={item.path}
+                className={`${baseClasses} hover:shadow-xl transform hover:scale-105`}
+              >
+                {Content}
+              </Link>
+            );
+          })}
         </div>
       </div>
     </div>

@@ -4,6 +4,9 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import get_user_model
+from django.urls import reverse
+from admissions.models import AdmissionFormTemplate
+from admissions.services import build_registration_download_token
 from .models import Teacher, Student
 from .serializers import (
     UserSerializer, TeacherSerializer, StudentSerializer,
@@ -27,7 +30,7 @@ class RegisterTeacherView(generics.CreateAPIView):
         
         return Response({
             'message': 'Teacher registration successful. Please wait for admin approval.',
-            'teacher_id': teacher.id,
+            'teacher_id': teacher.teacher_id,
             'status': 'pending'
         }, status=status.HTTP_201_CREATED)
 
@@ -42,11 +45,33 @@ class RegisterStudentView(generics.CreateAPIView):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         student = serializer.save()
-        
+
+        download_url = None
+        download_token = None
+        template_data = None
+        template = AdmissionFormTemplate.get_default()
+        if template:
+            download_token = build_registration_download_token(student)
+            download_url = request.build_absolute_uri(
+                f"{reverse('admission-registration-download')}?token={download_token}"
+            )
+            template_data = {
+                'slug': template.slug,
+                'name': template.name,
+                'blank_form_url': request.build_absolute_uri(
+                    reverse('admission-form-template-blank', args=[template.slug])
+                ),
+            }
+
         return Response({
             'message': 'Student registration successful. Please wait for admin approval.',
             'student_id': student.id,
-            'status': 'pending'
+            'status': 'pending',
+            'admission_form': {
+                'download_url': download_url,
+                'download_token': download_token,
+                'template': template_data,
+            } if template else None,
         }, status=status.HTTP_201_CREATED)
 
 
