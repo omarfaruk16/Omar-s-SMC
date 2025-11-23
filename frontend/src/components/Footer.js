@@ -192,7 +192,7 @@ const Footer = () => {
             </p>
             <a href="https://pitmcf.com/">
             <p className="text-blue-100 text-center md:text-right">
-              Developed By: <span className="text-white font-medium">PHTMCF (Padma IT, Rajshahi)</span>
+              Developed By: <span className="text-white font-medium">Padma IT, Rajshahi</span>
             </p>
             </a>
           </div>
