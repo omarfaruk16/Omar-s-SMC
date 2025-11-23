@@ -9,8 +9,8 @@ const PremtoliDegreeCollegeContact = () => {
           <div className="flex flex-col md:flex-row items-start md:items-center mb-4">
             {/* College Info on Map */}
             <div className="bg-white p-4 rounded-lg shadow-md md:mr-4 mb-4 md:mb-0 max-w-sm w-full z-10">
-              <h2 className="text-xl font-semibold text-gray-900">Premtoli Degree College</h2>
-              <p className="text-gray-600 text-sm">9CW4+2HJ, Godagari</p>
+              <h2 className="text-xl font-semibold text-gray-900">রোজি মোজাম্মেল মহিলা কলেজ</h2>
+              <p className="text-gray-600 text-sm">ডাকঘর- হাট-গুরুদাসপুর, উপজেলা- গুরুদাসপুর, জেলা- নাটোর</p>
               <div className="flex items-center mt-1">
                 <span className="text-yellow-500 font-bold text-sm">4.3</span>
                 <span className="text-gray-500 text-sm ml-1">⭐</span>
@@ -27,7 +27,7 @@ const PremtoliDegreeCollegeContact = () => {
             {/* Google Maps Embed */}
             <div className="flex-grow w-full md:w-auto h-96 relative">
               <iframe
-                src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3650.045763266224!2d88.35563867439007!3d24.45788417812929!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x39fbd05505f02c63%3A0xb63628e945c57980!2sPremtoli%20Degree%20College!5e0!3m2!1sen!2sbd!4v1701021430000!5m2!1sen!2sbd"
+                src="https://maps.app.goo.gl/jk9QpszXpCShFrN39"
                 width="100%"
                 height="100%"
                 style={{ border: 0 }}
@@ -48,21 +48,21 @@ const PremtoliDegreeCollegeContact = () => {
           {/* প্রতিষ্ঠানেন ঠিকানা (Institution Address) */}
           <div>
             <h3 className="text-lg font-semibold text-gray-800 mb-2">প্রতিষ্ঠানেন ঠিকানা</h3>
-            <p className="text-gray-700">প্রেমতলী, গোদাগাড়ী,</p>
-            <p className="text-gray-700">জেলা- রাজশাহী, বিভাগ- রাজশাহী</p>
+            <p className="text-gray-700">ডাকঘর- হাট-গুরুদাসপুর, উপজেলা- গুরুদাসপুর, ,</p>
+            <p className="text-gray-700">জেলা- নাটোর, বিভাগ- রাজশাহী</p>
           </div>
 
           {/* ইমেইল (Email) */}
           <div>
             <h3 className="text-lg font-semibold text-gray-800 mb-2">ইমেইল</h3>
-            <p className="text-gray-700">premtalicollege@gmail.com</p>
-            <p className="text-gray-700">c2522@nu.ac.bd</p>
+            <p className="text-gray-700">rosecycollege@gmail.com</p>
+  
           </div>
 
           {/* মোবাইল নাম্বার (Mobile Number) */}
           <div>
             <h3 className="text-lg font-semibold text-gray-800 mb-2">মোবাইল নাম্বার</h3>
-            <p className="text-gray-700">01309126761</p>
+            <p className="text-gray-700">০১৭৭৭-৬২২৫০২</p>
           </div>
 
           {/* যোগাযোগোর সময় (Contact Hours) */}

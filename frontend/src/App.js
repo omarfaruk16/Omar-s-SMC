@@ -1,4 +1,5 @@
 import React from 'react';
+import ScrollToTop from "./components/ScrollToTop";
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { ToastProvider } from './context/ToastContext';
@@ -64,6 +65,7 @@ function App() {
     <Router>
       <AuthProvider>
         <ToastProvider>
+        <ScrollToTop />
           <Layout>
           <Routes>
             {/* Public Routes */}
