@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { feeAPI, paymentAPI } from '../../services/api';
+import { examAPI, feeAPI, paymentAPI } from '../../services/api';
 import { useToast } from '../../context/ToastContext';
 
 const METHODS = [
@@ -15,6 +15,8 @@ const StudentFees = () => {
   const [loading, setLoading] = useState(true);
   const [paying, setPaying] = useState(null);
   const [form, setForm] = useState({ method: 'bkash', number: '', transaction_id: '' });
+  const [sslLoading, setSslLoading] = useState(false);
+  const [downloadingAdmit, setDownloadingAdmit] = useState('');
 
   useEffect(() => { load(); }, []);
 
@@ -26,6 +28,25 @@ const StudentFees = () => {
 
   const openPay = (fee) => { setPaying(fee); setForm({ method: 'bkash', number: '', transaction_id: '' }); };
   const cancelPay = () => { setPaying(null); };
+
+  const startSslPayment = async () => {
+    if (!paying || sslLoading) return;
+    setSslLoading(true);
+    try {
+      const response = await paymentAPI.initSslcommerz({ fee_id: paying.fee_id });
+      const gatewayUrl = response.data?.data;
+      if (!gatewayUrl) {
+        toast.error(response.data?.message || response.data?.error || 'Failed to start payment');
+        return;
+      }
+      window.location.assign(gatewayUrl);
+    } catch (error) {
+      console.error(error);
+      toast.error(error.response?.data?.error || error.response?.data?.message || 'Failed to start payment');
+    } finally {
+      setSslLoading(false);
+    }
+  };
 
   const submit = async (e) => {
     e.preventDefault();
@@ -40,6 +61,32 @@ const StudentFees = () => {
       setPaying(null);
       load();
     } catch (e) { console.error(e); toast.error('Failed to submit payment'); }
+  };
+
+  const downloadAdmitCard = async (fee) => {
+    if (!fee.exam_title || !fee.class_id) {
+      toast.error('Admit card data is missing.');
+      return;
+    }
+    const key = `${fee.exam_title}-${fee.class_id}`;
+    try {
+      setDownloadingAdmit(key);
+      const response = await examAPI.downloadAdmitCard(fee.exam_title, fee.class_id);
+      const blob = new Blob([response.data], { type: 'application/pdf' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `admit-card-${fee.exam_title.replace(/\\s+/g, '_')}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Failed to download admit card', error);
+      toast.error('Unable to download admit card right now.');
+    } finally {
+      setDownloadingAdmit('');
+    }
   };
 
   if (loading) {
@@ -80,7 +127,16 @@ const StudentFees = () => {
                       <td className="px-6 py-4 whitespace-nowrap text-sm">{f.fee_status}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm">{f.payment_status}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm">
-                        {f.payment_status === 'not_paid' && f.fee_status === 'running' ? (
+                        {f.fee_type === 'exam' && f.payment_status === 'approved' ? (
+                          <button
+                            type="button"
+                            onClick={() => downloadAdmitCard(f)}
+                            disabled={downloadingAdmit === `${f.exam_title}-${f.class_id}`}
+                            className="px-3 py-1 bg-green-600 text-white rounded disabled:opacity-60"
+                          >
+                            {downloadingAdmit === `${f.exam_title}-${f.class_id}` ? 'Preparing...' : 'Download Admit Card'}
+                          </button>
+                        ) : f.payment_status === 'not_paid' && f.fee_status === 'running' ? (
                           <button onClick={()=>openPay(f)} className="px-3 py-1 bg-blue-600 text-white rounded">Pay Now</button>
                         ) : (
                           <span className="text-gray-500">—</span>
@@ -98,6 +154,19 @@ const StudentFees = () => {
           <div className="fixed inset-0 bg-black/30 flex items-center justify-center p-4">
             <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-lg">
               <h2 className="text-xl font-bold mb-4">Pay: {paying.title}</h2>
+              <div className="mb-6">
+                <button
+                  type="button"
+                  onClick={startSslPayment}
+                  disabled={sslLoading}
+                  className="w-full px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-60"
+                >
+                  {sslLoading ? 'Redirecting...' : 'Pay with SSLCOMMERZ'}
+                </button>
+                <p className="text-xs text-gray-500 mt-2">
+                  Secure card and mobile banking payments via SSLCOMMERZ.
+                </p>
+              </div>
               <form onSubmit={submit} className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Method *</label>

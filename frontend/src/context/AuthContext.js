@@ -1,5 +1,11 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
-import { authAPI } from '../services/api';
+import { authAPI, notificationAPI } from '../services/api';
+import {
+  getActiveSubscription,
+  getOrCreateSubscription,
+  getPushPermission,
+  isPushSupported,
+} from '../utils/pushNotifications';
 
 const AuthContext = createContext(null);
 
@@ -17,6 +23,34 @@ export const AuthProvider = ({ children }) => {
     }
     setLoading(false);
   }, []);
+
+  useEffect(() => {
+    if (!user || user.role !== 'teacher') return;
+    if (!isPushSupported()) return;
+    if (getPushPermission() !== 'granted') return;
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const config = await notificationAPI.getPushConfig();
+        const publicKey = config.data?.publicKey;
+        if (!publicKey) return;
+        const subscription = await getOrCreateSubscription(publicKey);
+        if (!subscription || cancelled) return;
+        await notificationAPI.registerPushSubscription({
+          endpoint: subscription.endpoint,
+          keys: subscription.toJSON().keys,
+          user_agent: navigator.userAgent,
+        });
+      } catch (error) {
+        console.error('Push registration failed:', error);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
 
   const login = async (email, password) => {
     try {
@@ -39,7 +73,18 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const logout = () => {
+  const logout = async () => {
+    if (user?.role === 'teacher' && isPushSupported()) {
+      try {
+        const subscription = await getActiveSubscription();
+        if (subscription) {
+          await notificationAPI.unregisterPushSubscription({ endpoint: subscription.endpoint });
+          await subscription.unsubscribe();
+        }
+      } catch (error) {
+        console.error('Push unsubscribe failed:', error);
+      }
+    }
     localStorage.removeItem('access_token');
     localStorage.removeItem('refresh_token');
     localStorage.removeItem('user');

@@ -83,6 +83,20 @@ api.interceptors.response.use(
 export const authAPI = {
   login: (email, password) =>
     api.post('/auth/login/', { email, password }),
+
+  forgotPassword: (email) =>
+    api.post('/auth/forgot-password/', { email }),
+
+  verifyOtp: (email, otp) =>
+    api.post('/auth/verify-otp/', { email, otp }),
+
+  resetPassword: (email, resetToken, newPassword, newPasswordConfirm) =>
+    api.post('/auth/reset-password/', {
+      email,
+      reset_token: resetToken,
+      new_password: newPassword,
+      new_password_confirm: newPasswordConfirm,
+    }),
   
   registerTeacher: (data) =>
     api.post('/users/register/teacher/', data),
@@ -94,7 +108,10 @@ export const authAPI = {
     api.get('/users/profile/'),
   
   updateProfile: (data) =>
-    api.put('/users/profile/', data),
+    api.patch('/users/profile/', data),
+
+  changePassword: (data) =>
+    api.post('/users/change-password/', data),
 };
 
 // Classes APIs
@@ -145,6 +162,10 @@ export const admissionAPI = {
   deleteTemplate: (slug) => api.delete(`/admissions/templates/${slug}/`),
   getAvailableFields: () => api.get('/admissions/templates/available-fields/'),
   downloadStudentForm: (slug, studentId) => api.get(`/admissions/templates/${slug}/students/${studentId}/filled/`, { responseType: 'blob' }),
+  initAdmissionPayment: (data) => api.post('/admissions/sslcommerz/init/', data),
+  downloadSubmission: (params = {}) => api.get('/admissions/submissions/download/', { params, responseType: 'blob' }),
+  getSubmissions: () => api.get('/admissions/submissions/'),
+  downloadSubmissionById: (id) => api.get(`/admissions/submissions/${id}/download/`, { responseType: 'blob' }),
 };
 
 // Teachers APIs
@@ -186,6 +207,7 @@ export const paymentAPI = {
   getAll: () => api.get('/payments/'),
   getPending: () => api.get('/payments/pending/'),
   create: (data) => api.post('/payments/', data),
+  initSslcommerz: (data) => api.post('/payments/sslcommerz/init/', data),
   approve: (id) => api.post(`/payments/${id}/approve/`),
   reject: (id, notes) => api.post(`/payments/${id}/reject/`, { notes }),
 };
@@ -208,6 +230,14 @@ export const subjectAPI = {
 export const attendanceAPI = {
   getAll: (params = {}) => api.get('/academics/attendance/', { params }),
   mark: (class_id, date, present_ids, subject_id) => api.post('/academics/attendance/mark/', { class_id, date, present_ids, subject_id }),
+};
+
+// Transcript APIs
+export const transcriptAPI = {
+  getAll: () => api.get('/transcripts/'),
+  initSslcommerz: (data = {}) => api.post('/transcripts/sslcommerz/init/', data),
+  approve: (id, notes = '') => api.post(`/transcripts/${id}/approve/`, { notes }),
+  reject: (id, notes = '') => api.post(`/transcripts/${id}/reject/`, { notes }),
 };
 
 // Timetable APIs
@@ -234,6 +264,20 @@ export const examAPI = {
   create: (data) => api.post('/academics/exams/', data),
   update: (id, data) => api.put(`/academics/exams/${id}/`, data),
   delete: (id) => api.delete(`/academics/exams/${id}/`),
+  publish: (id) => api.post(`/academics/exams/${id}/publish/`),
+  unpublish: (id) => api.post(`/academics/exams/${id}/unpublish/`),
+  downloadAdmitCard: (exam_title, class_id) =>
+    api.get('/academics/exams/admit-card/', {
+      params: { exam_title, class_id },
+      responseType: 'blob',
+    }),
+};
+
+// Notification APIs
+export const notificationAPI = {
+  getPushConfig: () => api.get('/notifications/push-config/'),
+  registerPushSubscription: (data) => api.post('/notifications/push-subscriptions/', data),
+  unregisterPushSubscription: (data) => api.post('/notifications/push-subscriptions/unregister/', data),
 };
 
 // Teacher Subject Assignment APIs

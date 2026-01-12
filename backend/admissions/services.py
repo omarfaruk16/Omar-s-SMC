@@ -62,11 +62,18 @@ def _resolve_student_value(student: Student, source: str) -> str:
     return str(value)
 
 
-def _collect_field_values(template: AdmissionFormTemplate, student: Optional[Student]) -> list[dict]:
+def _collect_field_values(
+    template: AdmissionFormTemplate,
+    student: Optional[Student],
+    form_data: Optional[dict],
+) -> list[dict]:
     fields = []
     for definition in template.field_definitions:
         value = ""
-        if student:
+        if form_data is not None:
+            raw_value = form_data.get(definition["name"], "")
+            value = "" if raw_value is None else str(raw_value)
+        elif student:
             value = _resolve_student_value(student, definition["source"])
         fields.append({**definition, "value": value})
     return fields
@@ -75,6 +82,7 @@ def _collect_field_values(template: AdmissionFormTemplate, student: Optional[Stu
 def generate_admission_form_pdf(
     template: AdmissionFormTemplate,
     student: Optional[Student] = None,
+    form_data: Optional[dict] = None,
 ) -> Tuple[str, bytes]:
     """Render the configured admission form (blank or pre-filled)."""
 
@@ -167,7 +175,7 @@ def generate_admission_form_pdf(
     field_y = section_title_y - 20
     form = pdf.acroForm
 
-    fields = _collect_field_values(template, student)
+    fields = _collect_field_values(template, student, form_data)
     field_height = 16
     line_spacing = 12
 
@@ -245,6 +253,8 @@ def generate_admission_form_pdf(
 
     if student:
         filename = f"{template.slug or 'admission-form'}-{student.user.last_name or student.user.username}-filled.pdf"
+    elif form_data:
+        filename = f"{template.slug or 'admission-form'}-filled.pdf"
     else:
         filename = f"{template.slug or 'admission-form'}-blank.pdf"
 

@@ -90,7 +90,7 @@ class ExamSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Exam
-        fields = ['id', 'title', 'class_assigned', 'class_name', 'subject', 'subject_name', 'date', 'start_time', 'end_time', 'description', 'invigilator', 'invigilator_name']
+        fields = ['id', 'title', 'class_assigned', 'class_name', 'subject', 'subject_name', 'exam_fee', 'date', 'start_time', 'end_time', 'description', 'invigilator', 'invigilator_name', 'published']
         read_only_fields = ['id', 'class_name', 'subject_name', 'invigilator_name']
 
     def get_class_name(self, obj):
@@ -101,6 +101,11 @@ class ExamSerializer(serializers.ModelSerializer):
 
     def get_invigilator_name(self, obj):
         return obj.invigilator.user.get_full_name() if obj.invigilator else None
+
+    def validate_exam_fee(self, value):
+        if value is not None and value < 0:
+            raise serializers.ValidationError('Exam fee must be zero or positive.')
+        return value
 
 
 class TeacherSubjectAssignmentSerializer(serializers.ModelSerializer):

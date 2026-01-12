@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { noticeAPI, admissionAPI, API_BASE_URL } from "../services/api";
+import { noticeAPI, admissionAPI } from "../services/api";
 
 const Header = () => {
   const { user, logout } = useAuth();
@@ -18,6 +18,15 @@ const Header = () => {
     fetchLatestNotices();
     fetchAdmissionTemplate();
   }, []);
+
+  useEffect(() => {
+    if (!mobileMenuOpen) return;
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = originalOverflow;
+    };
+  }, [mobileMenuOpen]);
 
   const fetchLatestNotices = async () => {
     try {
@@ -51,12 +60,7 @@ const Header = () => {
     }
   };
 
-  const blankAdmissionUrl = admissionTemplate
-    ? admissionTemplate.blank_download_url ||
-      `${API_BASE_URL}/admissions/templates/${admissionTemplate.slug}/blank/`
-    : null;
-
-  const shouldShowAdmissionCta = !user && blankAdmissionUrl;
+  const shouldShowAdmissionCta = !user && admissionTemplate;
 
   const handleLogout = () => {
     logout();
@@ -191,14 +195,12 @@ const Header = () => {
               Contact
             </Link>
             {shouldShowAdmissionCta ? (
-              <a
-                href={blankAdmissionUrl}
-                target="_blank"
-                rel="noopener noreferrer"
+              <Link
+                to="/admission"
                 className="px-4 py-2 bg-green-600 text-white hover:bg-green-700 transition rounded"
               >
                 Fillup Admission Form
-              </a>
+              </Link>
             ) : (
               !user && (
                 <button
@@ -228,6 +230,12 @@ const Header = () => {
                   className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition"
                 >
                   Dashboard
+                </Link>
+                <Link
+                  to="/profile"
+                  className="px-4 py-2 bg-white text-blue-600 border border-blue-600 rounded hover:bg-blue-50 transition"
+                >
+                  Profile
                 </Link>
                 <button
                   onClick={handleLogout}
@@ -307,9 +315,13 @@ const Header = () => {
 
           {/* Mobile Menu Button */}
           <button
+            type="button"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="md:hidden p-2 text-gray-700 hover:text-blue-600"
+            className="md:hidden inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50"
+            aria-expanded={mobileMenuOpen}
+            aria-controls="mobile-menu"
           >
+            <span className="text-sm font-medium">Menu</span>
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               {mobileMenuOpen ? (
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -322,125 +334,183 @@ const Header = () => {
 
         {/* Mobile Menu */}
         {mobileMenuOpen && (
-          <div className="md:hidden mt-4 pb-4 border-t pt-4">
-            <div className="flex flex-col space-y-2">
-              <Link to="/" className="px-4 py-2 text-gray-700 hover:bg-blue-50 rounded" onClick={() => setMobileMenuOpen(false)}>
-                Home
-              </Link>
-              <Link to="/about" className="px-4 py-2 text-gray-700 hover:bg-blue-50 rounded" onClick={() => setMobileMenuOpen(false)}>
-                About
-              </Link>
-              
-              {/* Information submenu */}
-              <div className="pl-4">
-                <p className="px-4 py-2 text-gray-600 font-semibold text-sm">Information</p>
-                <Link to="/information/governing-body" className="px-4 py-2 text-gray-600 hover:bg-blue-50 rounded block text-sm" onClick={() => setMobileMenuOpen(false)}>
-                  • Governing Body
-                </Link>
-                <Link to="/information/students" className="px-4 py-2 text-gray-600 hover:bg-blue-50 rounded block text-sm" onClick={() => setMobileMenuOpen(false)}>
-                  • Students Information
-                </Link>
-                <Link to="/information/staffs" className="px-4 py-2 text-gray-600 hover:bg-blue-50 rounded block text-sm" onClick={() => setMobileMenuOpen(false)}>
-                  • Staffs
-                </Link>
-                <Link to="/information/library" className="px-4 py-2 text-gray-600 hover:bg-blue-50 rounded block text-sm" onClick={() => setMobileMenuOpen(false)}>
-                  • Library Information
-                </Link>
+          <div className="md:hidden fixed inset-0 z-50" role="dialog" aria-modal="true" id="mobile-menu">
+            <div
+              className="absolute inset-0 bg-black/40"
+              onClick={() => setMobileMenuOpen(false)}
+              aria-hidden="true"
+            />
+            <div className="absolute right-0 top-0 h-full w-80 max-w-[85vw] bg-white shadow-xl flex flex-col">
+              <div className="flex items-center justify-between px-4 py-4 bg-gradient-to-r from-blue-600 to-blue-500 text-white">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center">
+                    <img
+                      src="/assets/images/logo.png"
+                      alt="School Logo"
+                      className="w-8 h-8 object-contain"
+                      onError={(e) => {
+                        e.target.src = "https://via.placeholder.com/40x40/22c55e/ffffff?text=SMS";
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold leading-tight">Rosey Mozammel Women's College</p>
+                    <p className="text-xs opacity-90">রোজী মোজাম্মেল মহিলা কলেজ</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="p-2 rounded-full hover:bg-white/10"
+                  aria-label="Close menu"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
               </div>
 
-              <Link to="/teachers" className="px-4 py-2 text-gray-700 hover:bg-blue-50 rounded" onClick={() => setMobileMenuOpen(false)}>
-                Teachers
-              </Link>
-              <Link to="/notices" className="px-4 py-2 text-gray-700 hover:bg-blue-50 rounded" onClick={() => setMobileMenuOpen(false)}>
-                Notices
-              </Link>
-              <Link to="/results" className="px-4 py-2 text-gray-700 hover:bg-blue-50 rounded" onClick={() => setMobileMenuOpen(false)}>
-                Results
-              </Link>
-              <Link to="/contact" className="px-4 py-2 text-gray-700 hover:bg-blue-50 rounded" onClick={() => setMobileMenuOpen(false)}>
-                Contact
-              </Link>
-              {shouldShowAdmissionCta ? (
-                <a
-                  href={blankAdmissionUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="px-4 py-2 bg-green-600 text-white rounded text-center"
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  Fillup Admission Form
-                </a>
-              ) : (
-                !user && (
-                  <button
-                    type="button"
-                    disabled
-                    className="px-4 py-2 bg-gray-200 text-gray-500 rounded"
-                    title={admissionLoading ? "Loading admission form..." : "Admission form unavailable"}
-                  >
-                    Fillup Admission Form
-                  </button>
-                )
-              )}
+              <div className="flex-1 overflow-y-auto px-4 py-5 space-y-4">
+                <div className="space-y-2">
+                  <p className="text-xs uppercase tracking-wide text-gray-500 font-semibold">Main</p>
+                  <Link to="/" className="flex items-center justify-between px-3 py-2 text-gray-700 hover:bg-blue-50 rounded-lg" onClick={() => setMobileMenuOpen(false)}>
+                    Home
+                    <span className="text-gray-400">→</span>
+                  </Link>
+                  <Link to="/about" className="flex items-center justify-between px-3 py-2 text-gray-700 hover:bg-blue-50 rounded-lg" onClick={() => setMobileMenuOpen(false)}>
+                    About
+                    <span className="text-gray-400">→</span>
+                  </Link>
+                  <Link to="/teachers" className="flex items-center justify-between px-3 py-2 text-gray-700 hover:bg-blue-50 rounded-lg" onClick={() => setMobileMenuOpen(false)}>
+                    Teachers
+                    <span className="text-gray-400">→</span>
+                  </Link>
+                  <Link to="/notices" className="flex items-center justify-between px-3 py-2 text-gray-700 hover:bg-blue-50 rounded-lg" onClick={() => setMobileMenuOpen(false)}>
+                    Notices
+                    <span className="text-gray-400">→</span>
+                  </Link>
+                  <Link to="/results" className="flex items-center justify-between px-3 py-2 text-gray-700 hover:bg-blue-50 rounded-lg" onClick={() => setMobileMenuOpen(false)}>
+                    Results
+                    <span className="text-gray-400">→</span>
+                  </Link>
+                  <Link to="/contact" className="flex items-center justify-between px-3 py-2 text-gray-700 hover:bg-blue-50 rounded-lg" onClick={() => setMobileMenuOpen(false)}>
+                    Contact
+                    <span className="text-gray-400">→</span>
+                  </Link>
+                </div>
 
-              {user ? (
-                <>
+                <details className="group">
+                  <summary className="flex items-center justify-between px-3 py-2 text-gray-700 hover:bg-blue-50 rounded-lg cursor-pointer">
+                    <span className="font-medium">Information</span>
+                    <svg className="w-4 h-4 text-gray-500 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </summary>
+                  <div className="mt-2 space-y-1 pl-2">
+                    <Link to="/information/governing-body" className="block px-3 py-2 text-sm text-gray-600 hover:bg-blue-50 rounded-lg" onClick={() => setMobileMenuOpen(false)}>
+                      Governing Body
+                    </Link>
+                    <Link to="/information/students" className="block px-3 py-2 text-sm text-gray-600 hover:bg-blue-50 rounded-lg" onClick={() => setMobileMenuOpen(false)}>
+                      Students Information
+                    </Link>
+                    <Link to="/information/staffs" className="block px-3 py-2 text-sm text-gray-600 hover:bg-blue-50 rounded-lg" onClick={() => setMobileMenuOpen(false)}>
+                      Staffs
+                    </Link>
+                    <Link to="/information/library" className="block px-3 py-2 text-sm text-gray-600 hover:bg-blue-50 rounded-lg" onClick={() => setMobileMenuOpen(false)}>
+                      Library Information
+                    </Link>
+                  </div>
+                </details>
+
+                {shouldShowAdmissionCta ? (
                   <Link
-                    to={user.role === "admin" ? "/admin/dashboard" : user.role === "teacher" ? "/teacher/dashboard" : "/student/dashboard"}
-                    className="px-4 py-2 bg-blue-600 text-white rounded text-center"
+                    to="/admission"
+                    className="block px-4 py-3 bg-green-600 text-white rounded-lg text-center font-semibold shadow hover:bg-green-700"
                     onClick={() => setMobileMenuOpen(false)}
                   >
-                    Dashboard
+                    Fillup Admission Form
                   </Link>
-                  <button onClick={() => { handleLogout(); setMobileMenuOpen(false); }} className="px-4 py-2 bg-gray-200 text-gray-700 rounded">
-                    Logout
-                  </button>
-                </>
-              ) : (
-                <>
-                  {/* Mobile Login Options */}
-                  <div className="border-t pt-2 mt-2">
-                    <p className="px-4 py-2 text-gray-600 font-semibold text-sm">Login As</p>
+                ) : (
+                  !user && (
                     <button
-                      onClick={() => { handleLoginClick('admin'); setMobileMenuOpen(false); }}
-                      className="w-full text-left px-4 py-2 text-gray-700 hover:bg-blue-50 rounded"
+                      type="button"
+                      disabled
+                      className="w-full px-4 py-3 bg-gray-200 text-gray-500 rounded-lg"
+                      title={admissionLoading ? "Loading admission form..." : "Admission form unavailable"}
                     >
-                      Admin Login
+                      Fillup Admission Form
                     </button>
-                    <button
-                      onClick={() => { handleLoginClick('teacher'); setMobileMenuOpen(false); }}
-                      className="w-full text-left px-4 py-2 text-gray-700 hover:bg-blue-50 rounded"
-                    >
-                      Teacher Login
-                    </button>
-                    <button
-                      onClick={() => { handleLoginClick('student'); setMobileMenuOpen(false); }}
-                      className="w-full text-left px-4 py-2 text-gray-700 hover:bg-blue-50 rounded"
-                    >
-                      Student Login
-                    </button>
-                  </div>
+                  )
+                )}
 
-                  {/* Mobile Register Options */}
-                  <div className="border-t pt-2 mt-2">
-                    <p className="px-4 py-2 text-gray-600 font-semibold text-sm">Register As</p>
+                {user ? (
+                  <div className="space-y-2">
+                    <p className="text-xs uppercase tracking-wide text-gray-500 font-semibold">Account</p>
                     <Link
-                      to="/register/teacher"
-                      className="block px-4 py-2 text-gray-700 hover:bg-blue-50 rounded"
+                      to={user.role === "admin" ? "/admin/dashboard" : user.role === "teacher" ? "/teacher/dashboard" : "/student/dashboard"}
+                      className="block px-4 py-2 bg-blue-600 text-white rounded-lg text-center"
                       onClick={() => setMobileMenuOpen(false)}
                     >
-                      Teacher Registration
+                      Dashboard
                     </Link>
                     <Link
-                      to="/register/student"
-                      className="block px-4 py-2 text-gray-700 hover:bg-blue-50 rounded"
+                      to="/profile"
+                      className="block px-4 py-2 border border-blue-600 text-blue-600 rounded-lg text-center"
                       onClick={() => setMobileMenuOpen(false)}
                     >
-                      Student Registration
+                      Profile
                     </Link>
+                    <button
+                      type="button"
+                      onClick={() => { handleLogout(); setMobileMenuOpen(false); }}
+                      className="w-full px-4 py-2 bg-gray-200 text-gray-700 rounded-lg"
+                    >
+                      Logout
+                    </button>
                   </div>
-                </>
-              )}
+                ) : (
+                  <div className="rounded-xl border border-blue-100 bg-blue-50/60 p-4 space-y-3">
+                    <div className="space-y-2">
+                      <p className="text-xs uppercase tracking-wide text-gray-600 font-semibold">Login</p>
+                      <button
+                        onClick={() => { handleLoginClick('admin'); setMobileMenuOpen(false); }}
+                        className="w-full text-left px-3 py-2 bg-white text-gray-700 rounded-lg hover:bg-blue-100"
+                      >
+                        Admin Login
+                      </button>
+                      <button
+                        onClick={() => { handleLoginClick('teacher'); setMobileMenuOpen(false); }}
+                        className="w-full text-left px-3 py-2 bg-white text-gray-700 rounded-lg hover:bg-blue-100"
+                      >
+                        Teacher Login
+                      </button>
+                      <button
+                        onClick={() => { handleLoginClick('student'); setMobileMenuOpen(false); }}
+                        className="w-full text-left px-3 py-2 bg-white text-gray-700 rounded-lg hover:bg-blue-100"
+                      >
+                        Student Login
+                      </button>
+                    </div>
+                    <div className="space-y-2">
+                      <p className="text-xs uppercase tracking-wide text-gray-600 font-semibold">Register</p>
+                      <Link
+                        to="/register/teacher"
+                        className="block px-3 py-2 bg-white text-gray-700 rounded-lg hover:bg-blue-100"
+                        onClick={() => setMobileMenuOpen(false)}
+                      >
+                        Teacher Registration
+                      </Link>
+                      <Link
+                        to="/register/student"
+                        className="block px-3 py-2 bg-white text-gray-700 rounded-lg hover:bg-blue-100"
+                        onClick={() => setMobileMenuOpen(false)}
+                      >
+                        Student Registration
+                      </Link>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         )}

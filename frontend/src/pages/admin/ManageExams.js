@@ -9,7 +9,7 @@ const ManageExams = () => {
   const [subjects, setSubjects] = useState([]);
   const [teachers, setTeachers] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [form, setForm] = useState({ title:'', class_ids:[], papers:[{ subject:'', date:'', start_time:'', end_time:'', invigilator:'' }], description:'' });
+  const [form, setForm] = useState({ title:'', exam_fee:'', class_ids:[], papers:[{ subject:'', date:'', start_time:'', end_time:'', invigilator:'' }], description:'' });
 
   useEffect(() => { load(); }, []);
   const load = async () => {
@@ -30,6 +30,7 @@ const ManageExams = () => {
             title: form.title,
             class_assigned: cid,
             subject: Number(p.subject),
+            exam_fee: form.exam_fee ? Number(form.exam_fee) : null,
             date: p.date,
             start_time: p.start_time || null,
             end_time: p.end_time || null,
@@ -40,7 +41,7 @@ const ManageExams = () => {
       });
       await Promise.all(payloads.map(pl => examAPI.create(pl)));
       toast.success('Exam schedule created');
-      setForm({ title:'', class_ids:[], papers:[{ subject:'', date:'', start_time:'', end_time:'', invigilator:'' }], description:'' });
+      setForm({ title:'', exam_fee:'', class_ids:[], papers:[{ subject:'', date:'', start_time:'', end_time:'', invigilator:'' }], description:'' });
       load();
     }
     catch(e){ console.error(e); toast.error('Failed to create exam'); }
@@ -49,6 +50,26 @@ const ManageExams = () => {
     if (!window.confirm('Delete this exam?')) return;
     try { await examAPI.delete(id); setExams(exams.filter(x=>x.id!==id)); toast.success('Exam deleted'); }
     catch(e){ console.error(e); toast.error('Failed to delete exam'); }
+  };
+  const publish = async (id) => {
+    try {
+      await examAPI.publish(id);
+      setExams(exams.map(e => e.id === id ? { ...e, published: true } : e));
+      toast.success('Exam published');
+    } catch (e) {
+      console.error(e);
+      toast.error('Failed to publish exam');
+    }
+  };
+  const unpublish = async (id) => {
+    try {
+      await examAPI.unpublish(id);
+      setExams(exams.map(e => e.id === id ? { ...e, published: false } : e));
+      toast.success('Exam unpublished');
+    } catch (e) {
+      console.error(e);
+      toast.error('Failed to unpublish exam');
+    }
   };
 
   if (loading) return <div className="min-h-screen bg-gray-50 py-8 flex items-center justify-center"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" /></div>;
@@ -60,8 +81,9 @@ const ManageExams = () => {
         <div className="bg-white rounded-lg shadow-md p-6 mb-6">
           <h2 className="text-xl font-bold mb-4">Create Exam</h2>
           <form onSubmit={submit} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
               <input type="text" placeholder="Exam Title (e.g., Mid Term)" value={form.title} onChange={(e)=>setForm({...form, title:e.target.value})} className="px-3 py-2 border rounded" required />
+              <input type="number" min="0" step="0.01" placeholder="Exam Fee (BDT)" value={form.exam_fee} onChange={(e)=>setForm({...form, exam_fee:e.target.value})} className="px-3 py-2 border rounded" required />
               <select multiple value={form.class_ids} onChange={(e)=>setForm({...form, class_ids: Array.from(e.target.selectedOptions).map(o=>Number(o.value))})} className="px-3 py-2 border rounded h-28">
                 {classes.map(c => (<option key={c.id} value={c.id}>{c.name}{c.section?` - ${c.section}`:''}</option>))}
               </select>
@@ -111,6 +133,7 @@ const ManageExams = () => {
                     <th className="px-6 py-3 text-left font-medium text-gray-500 uppercase">Subject</th>
                     <th className="px-6 py-3 text-left font-medium text-gray-500 uppercase">Date</th>
                     <th className="px-6 py-3 text-left font-medium text-gray-500 uppercase">Time</th>
+                    <th className="px-6 py-3 text-left font-medium text-gray-500 uppercase">Status</th>
                     <th className="px-6 py-3 text-left font-medium text-gray-500 uppercase">Actions</th>
                   </tr>
                 </thead>
@@ -122,7 +145,15 @@ const ManageExams = () => {
                       <td className="px-6 py-4">{e.subject_name || '-'}</td>
                       <td className="px-6 py-4">{e.date}</td>
                       <td className="px-6 py-4">{e.start_time || '-'}{e.end_time ? ` - ${e.end_time}` : ''}</td>
-                      <td className="px-6 py-4"><button onClick={()=>remove(e.id)} className="px-3 py-1 bg-red-600 text-white rounded">Delete</button></td>
+                      <td className="px-6 py-4">{e.published ? 'Published' : 'Draft'}</td>
+                      <td className="px-6 py-4 space-x-2">
+                        {e.published ? (
+                          <button onClick={()=>unpublish(e.id)} className="px-3 py-1 bg-yellow-600 text-white rounded">Unpublish</button>
+                        ) : (
+                          <button onClick={()=>publish(e.id)} className="px-3 py-1 bg-green-600 text-white rounded">Publish</button>
+                        )}
+                        <button onClick={()=>remove(e.id)} className="px-3 py-1 bg-red-600 text-white rounded">Delete</button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>

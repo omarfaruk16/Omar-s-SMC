@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import AdmissionFormTemplate
+from .models import AdmissionFormSubmission, AdmissionFormTemplate
 
 
 @admin.register(AdmissionFormTemplate)
@@ -61,3 +61,11 @@ class AdmissionFormTemplateAdmin(admin.ModelAdmin):
             queryset.update(is_default=False)
             template.is_default = True
             template.save()
+
+
+@admin.register(AdmissionFormSubmission)
+class AdmissionFormSubmissionAdmin(admin.ModelAdmin):
+    list_display = ("id", "template", "transaction_id", "status", "amount", "created_at", "paid_at")
+    list_filter = ("status", "template", "created_at")
+    search_fields = ("transaction_id",)
+    readonly_fields = ("created_at", "paid_at", "gateway_payload")

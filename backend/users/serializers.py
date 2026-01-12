@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
+from django.contrib.auth.password_validation import validate_password
 from .models import Teacher, Student
 from classes.models import Class
 from academics.models import Subject
@@ -293,7 +294,7 @@ class StudentSerializer(serializers.ModelSerializer):
         model = Student
         fields = [
             'id', 'user', 'student_class', 'student_class_detail',
-            'date_of_birth', 'address', 'guardian_name', 'guardian_phone'
+            'roll_number', 'date_of_birth', 'address', 'guardian_name', 'guardian_phone'
         ]
     
     def get_student_class_detail(self, obj):
@@ -301,3 +302,134 @@ class StudentSerializer(serializers.ModelSerializer):
             from classes.serializers import ClassSerializer
             return ClassSerializer(obj.student_class).data
         return None
+
+
+class UserProfileSerializer(serializers.ModelSerializer):
+    """Serializer for profile read/update with role-specific fields."""
+
+    # Student fields
+    student_class = serializers.PrimaryKeyRelatedField(read_only=True)
+    student_class_detail = serializers.SerializerMethodField()
+    roll_number = serializers.SerializerMethodField()
+    date_of_birth = serializers.DateField(required=False, allow_null=True)
+    address = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    guardian_name = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    guardian_phone = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+
+    # Teacher fields
+    nid = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    designation = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    teacher_id = serializers.CharField(read_only=True)
+
+    class Meta:
+        model = User
+        fields = [
+            'id',
+            'email',
+            'first_name',
+            'last_name',
+            'phone',
+            'role',
+            'status',
+            'image',
+            'date_joined',
+            'student_class',
+            'student_class_detail',
+            'roll_number',
+            'date_of_birth',
+            'address',
+            'guardian_name',
+            'guardian_phone',
+            'nid',
+            'designation',
+            'teacher_id',
+        ]
+        read_only_fields = [
+            'id',
+            'role',
+            'status',
+            'date_joined',
+            'student_class',
+            'student_class_detail',
+            'teacher_id',
+        ]
+
+    def get_student_class_detail(self, obj):
+        if hasattr(obj, 'student_profile') and obj.student_profile.student_class:
+            from classes.serializers import ClassSerializer
+            return ClassSerializer(obj.student_profile.student_class).data
+        return None
+
+    def get_roll_number(self, obj):
+        if hasattr(obj, 'student_profile'):
+            return obj.student_profile.roll_number
+        return None
+
+    def update(self, instance, validated_data):
+        student_fields = {
+            'date_of_birth',
+            'address',
+            'guardian_name',
+            'guardian_phone',
+        }
+        teacher_fields = {
+            'nid',
+            'designation',
+        }
+
+        # Update user fields
+        for attr in ['email', 'first_name', 'last_name', 'phone', 'image']:
+            if attr in validated_data:
+                setattr(instance, attr, validated_data.get(attr))
+        instance.save()
+
+        # Update role-specific profile fields
+        if instance.role == 'student' and hasattr(instance, 'student_profile'):
+            student_profile = instance.student_profile
+            for field in student_fields:
+                if field in validated_data:
+                    setattr(student_profile, field, validated_data.get(field))
+            student_profile.save()
+
+        if instance.role == 'teacher' and hasattr(instance, 'teacher_profile'):
+            teacher_profile = instance.teacher_profile
+            for field in teacher_fields:
+                if field in validated_data:
+                    setattr(teacher_profile, field, validated_data.get(field))
+            teacher_profile.save()
+
+        return instance
+
+
+class ChangePasswordSerializer(serializers.Serializer):
+    current_password = serializers.CharField(write_only=True)
+    new_password = serializers.CharField(write_only=True)
+    new_password_confirm = serializers.CharField(write_only=True)
+
+    def validate(self, attrs):
+        if attrs['new_password'] != attrs['new_password_confirm']:
+            raise serializers.ValidationError({'new_password_confirm': 'Passwords do not match.'})
+        validate_password(attrs['new_password'], self.context.get('user'))
+        return attrs
+
+
+class ForgotPasswordSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+
+
+class VerifyOTPSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+    otp = serializers.CharField()
+
+
+class ResetPasswordSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+    reset_token = serializers.UUIDField()
+    new_password = serializers.CharField(write_only=True)
+    new_password_confirm = serializers.CharField(write_only=True)
+
+    def validate(self, attrs):
+        if attrs['new_password'] != attrs['new_password_confirm']:
+            raise serializers.ValidationError({'new_password_confirm': 'Passwords do not match.'})
+        validate_password(attrs['new_password'], self.context.get('user'))
+        return attrs

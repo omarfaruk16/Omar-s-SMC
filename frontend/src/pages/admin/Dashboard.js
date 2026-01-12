@@ -213,6 +213,21 @@ const Dashboard = () => {
             </div>
           </Link>
 
+          <Link to="/admin/admission-submissions" className="bg-white rounded-xl shadow-md p-6 hover:shadow-lg transition-all duration-200 border-2 border-transparent hover:border-emerald-200">
+            <div className="flex items-center">
+              <div className="p-3 rounded-lg bg-emerald-100">
+                <svg className="w-8 h-8 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+              </div>
+              <div className="ml-4">
+                <p className="text-sm text-gray-600 font-medium">Admission Forms</p>
+                <p className="text-2xl font-bold text-gray-900">Submissions</p>
+                <p className="text-xs text-gray-500 mt-1">View paid applicants</p>
+              </div>
+            </div>
+          </Link>
+
           <Link to="/admin/attendance" className="bg-white rounded-xl shadow-md p-6 hover:shadow-lg transition-all duration-200 border-2 border-transparent hover:border-teal-200">
             <div className="flex items-center">
               <div className="p-3 rounded-lg bg-teal-100">
@@ -503,6 +518,19 @@ const Dashboard = () => {
                   </svg>
                 </div>
                 <p className="font-semibold text-sm">Payments</p>
+              </div>
+            </Link>
+            <Link
+              to="/admin/transcripts"
+              className="p-4 text-center border-2 border-gray-200 rounded-xl hover:border-sky-400 hover:bg-sky-50 transition-all duration-200 group"
+            >
+              <div className="flex flex-col items-center">
+                <div className="p-3 bg-sky-100 rounded-lg mb-2 group-hover:bg-sky-200 transition-colors">
+                  <svg className="w-6 h-6 text-sky-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 14l9-5-9-5-9 5 9 5zm0 0v6m-7-3l7 4 7-4" />
+                  </svg>
+                </div>
+                <p className="font-semibold text-sm">Transcripts</p>
               </div>
             </Link>
             <Link

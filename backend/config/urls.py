@@ -20,6 +20,7 @@ from django.conf import settings
 from django.conf.urls.static import static
 from rest_framework_simplejwt.views import TokenRefreshView
 from users.authentication import CustomTokenObtainPairView
+from users.views import ForgotPasswordView, VerifyOTPView, ResetPasswordView
 
 urlpatterns = [
     path("admin/", admin.site.urls),
@@ -27,6 +28,9 @@ urlpatterns = [
     # JWT Authentication
     path('api/auth/login/', CustomTokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('api/auth/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+    path('api/auth/forgot-password/', ForgotPasswordView.as_view(), name='forgot-password'),
+    path('api/auth/verify-otp/', VerifyOTPView.as_view(), name='verify-otp'),
+    path('api/auth/reset-password/', ResetPasswordView.as_view(), name='reset-password'),
     
     # Public API endpoints
     path('api/public/', include('users.public_urls')),
@@ -40,6 +44,8 @@ urlpatterns = [
     path('api/materials/', include('materials.urls')),
     path('api/admissions/', include('admissions.urls')),
     path('api/', include('fees.urls')),
+    path('api/', include('transcripts.urls')),
+    path('api/notifications/', include('notifications.urls')),
 ]
 
 # Serve media files in development

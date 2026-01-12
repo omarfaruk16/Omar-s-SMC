@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import Calendar from '../../components/Calendar';
 import Modal from '../../components/Modal';
@@ -9,6 +9,8 @@ import { useToast } from '../../context/ToastContext';
 const StudentDashboard = () => {
   const { user } = useAuth();
   const toast = useToast();
+  const location = useLocation();
+  const navigate = useNavigate();
   const now = new Date();
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth());
@@ -18,9 +20,14 @@ const StudentDashboard = () => {
   const [modalOpen, setModalOpen] = useState(false);
   const [modalDate, setModalDate] = useState(null);
   const [recentMarks, setRecentMarks] = useState([]);
+  const [publishedMarks, setPublishedMarks] = useState([]);
   const [admissionTemplate, setAdmissionTemplate] = useState(null);
   const [studentProfile, setStudentProfile] = useState(null);
   const [downloadingAdmissionForm, setDownloadingAdmissionForm] = useState(false);
+  const [downloadingAdmitCard, setDownloadingAdmitCard] = useState('');
+  const [paymentModalOpen, setPaymentModalOpen] = useState(false);
+  const [paymentStatus, setPaymentStatus] = useState('');
+  const [paymentSource, setPaymentSource] = useState('');
   const [stats, setStats] = useState({
     totalClasses: 0,
     presentCount: 0,
@@ -30,6 +37,24 @@ const StudentDashboard = () => {
     attendanceRate: 0
   });
   const header = useMemo(() => new Date(year, month, 1).toLocaleString('en-US', { month: 'long', year: 'numeric' }), [year, month]);
+  const groupedResults = useMemo(() => {
+    const groups = {};
+    (publishedMarks || []).forEach((mark) => {
+      const examName = mark.exam_name || 'Exam Results';
+      if (!groups[examName]) {
+        groups[examName] = { examName, date: mark.date, marks: [] };
+      }
+      groups[examName].marks.push(mark);
+      if (mark.date && (!groups[examName].date || new Date(mark.date) > new Date(groups[examName].date))) {
+        groups[examName].date = mark.date;
+      }
+    });
+    return Object.values(groups).sort((a, b) => {
+      const ad = a.date ? new Date(a.date).getTime() : 0;
+      const bd = b.date ? new Date(b.date).getTime() : 0;
+      return bd - ad;
+    });
+  }, [publishedMarks]);
 
   useEffect(() => {
     const date_from = new Date(year, month, 1).toISOString().slice(0,10);
@@ -73,17 +98,31 @@ const StudentDashboard = () => {
     (async () => {
       try {
         const res = await markAPI.getAll();
-        const published = (res.data || []).filter(m => m.published).sort((a,b)=> new Date(b.date) - new Date(a.date)).slice(0,5);
-        setRecentMarks(published);
+        const published = (res.data || []).filter(m => m.published);
+        setPublishedMarks(published);
+        const recent = published.sort((a,b)=> new Date(b.date) - new Date(a.date)).slice(0,5);
+        setRecentMarks(recent);
 
         // Calculate average marks
-        if (published.length > 0) {
-          const avgMarks = Math.round(published.reduce((sum, m) => sum + ((m.score / m.max_score) * 100), 0) / published.length);
+        if (recent.length > 0) {
+          const avgMarks = Math.round(recent.reduce((sum, m) => sum + ((m.score / m.max_score) * 100), 0) / recent.length);
           setStats(prev => ({ ...prev, avgMarks }));
         }
       } catch (e) { console.error(e); }
     })();
   }, [year, month, toast]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const payment = params.get('payment');
+    if (!payment) return;
+    setPaymentStatus(payment);
+    setPaymentSource(params.get('source') || '');
+    setPaymentModalOpen(true);
+    ['payment', 'source', 'tran_id', 'val_id'].forEach((key) => params.delete(key));
+    const query = params.toString();
+    navigate(`${location.pathname}${query ? `?${query}` : ''}`, { replace: true });
+  }, [location.pathname, location.search, navigate]);
 
   useEffect(() => {
     (async () => {
@@ -133,9 +172,32 @@ const StudentDashboard = () => {
     }
   }, [admissionTemplate, studentProfile, toast]);
 
+  const handleDownloadAdmitCard = useCallback(async (examTitle, classId) => {
+    const key = `${examTitle}-${classId}`;
+    try {
+      setDownloadingAdmitCard(key);
+      const response = await examAPI.downloadAdmitCard(examTitle, classId);
+      const blob = new Blob([response.data], { type: 'application/pdf' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `admit-card-${examTitle.replace(/\s+/g, '_')}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Failed to download admit card', error);
+      toast.error('Unable to download admit card right now.');
+    } finally {
+      setDownloadingAdmitCard('');
+    }
+  }, [toast]);
+
   const menuItems = useMemo(() => [
     { key: 'materials', title: 'Study Materials', path: '/student/materials', icon: '📚', description: 'Access class materials and resources', color: 'from-blue-500 to-blue-600' },
     { key: 'fees', title: 'Fees & Payments', path: '/student/fees', icon: '💰', description: 'View and pay your fees', color: 'from-green-500 to-emerald-600' },
+    { key: 'transcripts', title: 'Transcript Request', path: '/student/transcripts', icon: 'TR', description: 'Request your transcript', color: 'from-indigo-500 to-indigo-600' },
     { key: 'attendance', title: 'Attendance', path: '/student/attendance', icon: '✅', description: 'View your attendance', color: 'from-purple-500 to-indigo-600' },
     { key: 'timetable', title: 'Timetable', path: '/student/timetable', icon: '🗓️', description: 'View class timetable', color: 'from-orange-500 to-amber-600' },
     {
@@ -343,6 +405,54 @@ const StudentDashboard = () => {
           </div>
         </div>
 
+        <div className="mb-8 bg-white rounded-xl shadow-md p-6">
+          <h2 className="text-xl font-bold mb-4">Published Results</h2>
+          {groupedResults.length === 0 ? (
+            <p className="text-gray-500 text-center py-8">No published results yet</p>
+          ) : (
+            <div className="space-y-6">
+              {groupedResults.map((group) => {
+                const totals = group.marks.reduce(
+                  (acc, mark) => ({
+                    score: acc.score + (Number(mark.score) || 0),
+                    max: acc.max + (Number(mark.max_score) || 0),
+                  }),
+                  { score: 0, max: 0 }
+                );
+                const percentage = totals.max ? Math.round((totals.score / totals.max) * 100) : 0;
+                return (
+                  <div key={group.examName} className="border border-gray-200 rounded-lg p-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
+                      <div>
+                        <h3 className="font-semibold text-gray-900">{group.examName}</h3>
+                        <p className="text-xs text-gray-500">
+                          {group.date ? new Date(group.date).toLocaleDateString() : 'Result published'}
+                        </p>
+                      </div>
+                      <div className="text-sm text-gray-700 font-medium">
+                        Total: {totals.score}/{totals.max} ({percentage}%)
+                      </div>
+                    </div>
+                    <div className="divide-y">
+                      {group.marks.map((mark) => {
+                        const percent = mark.max_score ? Math.round((mark.score / mark.max_score) * 100) : 0;
+                        return (
+                          <div key={mark.id} className="flex items-center justify-between py-2 text-sm">
+                            <div className="font-medium text-gray-800">{mark.subject_name}</div>
+                            <div className="text-gray-600">
+                              {mark.score}/{mark.max_score} ({percent}%)
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
         {/* Action Cards with Modern Design */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {menuItems.map((item) => {
@@ -403,6 +513,14 @@ const StudentDashboard = () => {
         const weekday = modalDate.getDay() === 0 ? 6 : modalDate.getDay()-1;
         const daySlots = slots.filter(s => s.weekday === weekday);
         const dayExams = exams.filter(e => e.date === dstr);
+        const examGroups = dayExams.reduce((acc, exam) => {
+          const key = `${exam.title}-${exam.class_assigned}`;
+          if (!acc[key]) {
+            acc[key] = { title: exam.title, class_assigned: exam.class_assigned };
+          }
+          return acc;
+        }, {});
+        const admitCardGroups = Object.values(examGroups);
         return (
           <div className="space-y-4">
             <div>
@@ -420,14 +538,61 @@ const StudentDashboard = () => {
             <div>
               <h4 className="font-semibold mb-2">Exams</h4>
               {dayExams.length === 0 ? <div className="text-sm text-gray-500">No exams</div> : (
-                <ul className="text-sm space-y-1">
-                  {dayExams.map(e => (<li key={e.id}><span className="font-medium">{e.title}</span>{e.subject_name ? ` · ${e.subject_name}` : ''}{e.start_time ? ` · ${e.start_time}-${e.end_time||''}` : ''}</li>))}
-                </ul>
+                <div className="space-y-3">
+                  <ul className="text-sm space-y-1">
+                    {dayExams.map(e => (
+                      <li key={e.id}>
+                        <span className="font-medium">{e.title}</span>
+                        {e.subject_name ? ` · ${e.subject_name}` : ''}
+                        {e.start_time ? ` · ${e.start_time}-${e.end_time||''}` : ''}
+                      </li>
+                    ))}
+                  </ul>
+                  <div className="space-y-2">
+                    {admitCardGroups.map(group => {
+                      const key = `${group.title}-${group.class_assigned}`;
+                      const isLoading = downloadingAdmitCard === key;
+                      return (
+                        <button
+                          key={key}
+                          type="button"
+                          onClick={() => handleDownloadAdmitCard(group.title, group.class_assigned)}
+                          disabled={isLoading}
+                          className={`px-3 py-2 text-sm rounded ${isLoading ? 'bg-gray-300 text-gray-700' : 'bg-blue-600 text-white'}`}
+                        >
+                          {isLoading ? 'Preparing Admit Card...' : `Download Admit Card (${group.title})`}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
               )}
             </div>
           </div>
         );
       })()}
+    </Modal>
+    <Modal
+      open={paymentModalOpen}
+      onClose={() => setPaymentModalOpen(false)}
+      title={paymentStatus === 'success' ? 'Payment Successful' : 'Payment Failed'}
+    >
+      <div className="space-y-4">
+        <p className="text-sm text-gray-700">
+          {paymentStatus === 'success'
+            ? `Your ${paymentSource === 'transcript' ? 'transcript request' : 'fee'} payment has been completed successfully.`
+            : `Your ${paymentSource === 'transcript' ? 'transcript request' : 'fee'} payment could not be completed. Please try again.`}
+        </p>
+        <div className="flex justify-end">
+          <button
+            type="button"
+            onClick={() => setPaymentModalOpen(false)}
+            className="px-4 py-2 rounded bg-blue-600 text-white"
+          >
+            Close
+          </button>
+        </div>
+      </div>
     </Modal>
     </>
   );

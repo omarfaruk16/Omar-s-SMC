@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from rest_framework.reverse import reverse
 
-from .models import AdmissionFormTemplate
+from .models import AdmissionFormTemplate, AdmissionFormSubmission
 
 
 class AdmissionFormTemplateSerializer(serializers.ModelSerializer):
@@ -116,3 +116,46 @@ class AdmissionFormTemplateSerializer(serializers.ModelSerializer):
 
         instance.save()
         return instance
+
+
+class AdmissionFormSubmissionSerializer(serializers.ModelSerializer):
+    applicant_name = serializers.SerializerMethodField()
+    applicant_email = serializers.SerializerMethodField()
+    applicant_phone = serializers.SerializerMethodField()
+    template_name = serializers.CharField(source="template.name", read_only=True)
+
+    class Meta:
+        model = AdmissionFormSubmission
+        fields = [
+            "id",
+            "template",
+            "template_name",
+            "form_data",
+            "amount",
+            "transaction_id",
+            "status",
+            "created_at",
+            "paid_at",
+            "applicant_name",
+            "applicant_email",
+            "applicant_phone",
+        ]
+        read_only_fields = fields
+
+    def _get_field(self, obj, key):
+        value = obj.form_data.get(key)
+        if value in (None, ""):
+            return ""
+        return str(value)
+
+    def get_applicant_name(self, obj):
+        first = self._get_field(obj, "first_name")
+        last = self._get_field(obj, "last_name")
+        name = f"{first} {last}".strip()
+        return name or self._get_field(obj, "guardian_name")
+
+    def get_applicant_email(self, obj):
+        return self._get_field(obj, "email")
+
+    def get_applicant_phone(self, obj):
+        return self._get_field(obj, "phone") or self._get_field(obj, "guardian_phone")

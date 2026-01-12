@@ -72,6 +72,7 @@ class Student(models.Model):
     """Student profile model"""
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='student_profile')
     student_class = models.ForeignKey('classes.Class', on_delete=models.SET_NULL, null=True, related_name='students')
+    roll_number = models.CharField(max_length=30, blank=True, null=True)
     date_of_birth = models.DateField(null=True, blank=True)
     address = models.TextField(blank=True, null=True)
     guardian_name = models.CharField(max_length=100, blank=True, null=True)
@@ -82,3 +83,25 @@ class Student(models.Model):
     
     def __str__(self):
         return f"{self.user.get_full_name()} - Student"
+
+
+class PasswordResetOTP(models.Model):
+    """One-time password for email-based password reset."""
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='password_reset_otps')
+    code_hash = models.CharField(max_length=64)
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField()
+    verified_at = models.DateTimeField(blank=True, null=True)
+    reset_token = models.UUIDField(blank=True, null=True, unique=True)
+    is_used = models.BooleanField(default=False)
+    attempts = models.PositiveSmallIntegerField(default=0)
+
+    class Meta:
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['user', 'is_used', 'created_at']),
+        ]
+
+    def __str__(self):
+        return f"PasswordResetOTP(user={self.user_id}, used={self.is_used})"
