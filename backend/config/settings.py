@@ -211,5 +211,7 @@ SSLCOMMERZ_FAIL_URL = config('SSLCOMMERZ_FAIL_URL', default='http://localhost:30
 SSLCOMMERZ_CANCEL_URL = config('SSLCOMMERZ_CANCEL_URL', default='http://localhost:3000/payment/cancel')
 SSLCOMMERZ_IPN_URL = config('SSLCOMMERZ_IPN_URL', default='http://localhost:8000/api/payments/sslcommerz/ipn/')
 SSLCOMMERZ_TRANSCRIPT_IPN_URL = config('SSLCOMMERZ_TRANSCRIPT_IPN_URL', default='http://localhost:8000/api/transcripts/sslcommerz/ipn/')
+SSLCOMMERZ_ADMISSION_IPN_URL = config('SSLCOMMERZ_ADMISSION_IPN_URL', default='http://localhost:8000/api/admissions/sslcommerz/ipn/')
 SSLCOMMERZ_CURRENCY = config('SSLCOMMERZ_CURRENCY', default='BDT')
+ADMISSION_FORM_FEE_AMOUNT = config('ADMISSION_FORM_FEE_AMOUNT', default=3500, cast=int)
 TRANSCRIPT_FEE_AMOUNT = config('TRANSCRIPT_FEE_AMOUNT', default=3500, cast=int)

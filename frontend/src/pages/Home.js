@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { HashLink } from "react-router-hash-link";
-import { noticeAPI, admissionAPI, API_BASE_URL } from "../services/api";
+import { noticeAPI, admissionAPI } from "../services/api";
 import { useAuth } from "../context/AuthContext";
 
 const slides = [
@@ -67,11 +67,7 @@ const Home = () => {
     setCurrentSlide((prev) => (prev - 1 + slides.length) % slides.length);
   };
 
-  const blankAdmissionUrl = admissionTemplate
-    ? admissionTemplate.blank_download_url ||
-      `${API_BASE_URL}/admissions/templates/${admissionTemplate.slug}/blank/`
-    : null;
-  const shouldShowAdmissionCta = !user && blankAdmissionUrl;
+  const shouldShowAdmissionCta = !user && admissionTemplate;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -79,10 +75,8 @@ const Home = () => {
       <section className="container mx-auto px-4 py-8">
         <div className="flex justify-end mb-4">
           {shouldShowAdmissionCta ? (
-            <a
-              href={blankAdmissionUrl}
-              target="_blank"
-              rel="noopener noreferrer"
+            <Link
+              to="/admission"
               className="inline-flex items-center gap-2 px-5 py-2 rounded-lg bg-green-600 text-white font-semibold shadow hover:bg-green-700 transition"
             >
               Fillup Admission Form
@@ -99,7 +93,7 @@ const Home = () => {
                   d="M4 4v16h16M8 12l4 4 4-4M12 16V4"
                 />
               </svg>
-            </a>
+            </Link>
           ) : (
             !user && (
               <button

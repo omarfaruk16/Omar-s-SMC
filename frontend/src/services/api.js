@@ -162,6 +162,10 @@ export const admissionAPI = {
   deleteTemplate: (slug) => api.delete(`/admissions/templates/${slug}/`),
   getAvailableFields: () => api.get('/admissions/templates/available-fields/'),
   downloadStudentForm: (slug, studentId) => api.get(`/admissions/templates/${slug}/students/${studentId}/filled/`, { responseType: 'blob' }),
+  initAdmissionPayment: (data) => api.post('/admissions/sslcommerz/init/', data),
+  downloadSubmission: (params = {}) => api.get('/admissions/submissions/download/', { params, responseType: 'blob' }),
+  getSubmissions: () => api.get('/admissions/submissions/'),
+  downloadSubmissionById: (id) => api.get(`/admissions/submissions/${id}/download/`, { responseType: 'blob' }),
 };
 
 // Teachers APIs
@@ -203,6 +207,7 @@ export const paymentAPI = {
   getAll: () => api.get('/payments/'),
   getPending: () => api.get('/payments/pending/'),
   create: (data) => api.post('/payments/', data),
+  initSslcommerz: (data) => api.post('/payments/sslcommerz/init/', data),
   approve: (id) => api.post(`/payments/${id}/approve/`),
   reject: (id, notes) => api.post(`/payments/${id}/reject/`, { notes }),
 };
@@ -230,6 +235,7 @@ export const attendanceAPI = {
 // Transcript APIs
 export const transcriptAPI = {
   getAll: () => api.get('/transcripts/'),
+  initSslcommerz: (data = {}) => api.post('/transcripts/sslcommerz/init/', data),
   approve: (id, notes = '') => api.post(`/transcripts/${id}/approve/`, { notes }),
   reject: (id, notes = '') => api.post(`/transcripts/${id}/reject/`, { notes }),
 };

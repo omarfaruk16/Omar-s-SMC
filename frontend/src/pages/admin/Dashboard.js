@@ -213,6 +213,21 @@ const Dashboard = () => {
             </div>
           </Link>
 
+          <Link to="/admin/admission-submissions" className="bg-white rounded-xl shadow-md p-6 hover:shadow-lg transition-all duration-200 border-2 border-transparent hover:border-emerald-200">
+            <div className="flex items-center">
+              <div className="p-3 rounded-lg bg-emerald-100">
+                <svg className="w-8 h-8 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+              </div>
+              <div className="ml-4">
+                <p className="text-sm text-gray-600 font-medium">Admission Forms</p>
+                <p className="text-2xl font-bold text-gray-900">Submissions</p>
+                <p className="text-xs text-gray-500 mt-1">View paid applicants</p>
+              </div>
+            </div>
+          </Link>
+
           <Link to="/admin/attendance" className="bg-white rounded-xl shadow-md p-6 hover:shadow-lg transition-all duration-200 border-2 border-transparent hover:border-teal-200">
             <div className="flex items-center">
               <div className="p-3 rounded-lg bg-teal-100">

@@ -14,6 +14,7 @@ import Notices from './pages/Notices';
 import NoticeDetail from './pages/NoticeDetail';
 import Results from './pages/Results';
 import Contact from './pages/Contact';
+import AdmissionForm from './pages/AdmissionForm';
 
 // Information Pages
 import GoverningBody from './pages/GoverningBody';
@@ -47,6 +48,7 @@ import TeacherAssignments from './pages/admin/TeacherAssignments';
 import ManageTeacherAssignments from './pages/admin/ManageTeacherAssignments';
 import ManageAdmissionForm from './pages/admin/ManageAdmissionForm';
 import ManageTranscripts from './pages/admin/ManageTranscripts';
+import ManageAdmissionSubmissions from './pages/admin/ManageAdmissionSubmissions';
 
 // Teacher Dashboard
 import TeacherDashboard from './pages/teacher/Dashboard';
@@ -84,6 +86,7 @@ function App() {
             <Route path="/notices/:id" element={<NoticeDetail />} />
             <Route path="/results" element={<Results />} />
             <Route path="/contact" element={<Contact />} />
+            <Route path="/admission" element={<AdmissionForm />} />
 
             {/* Information Routes */}
             <Route path="/information/governing-body" element={<GoverningBody />} />
@@ -227,6 +230,14 @@ function App() {
               element={
                 <PrivateRoute allowedRoles={['admin']}>
                   <ManageAdmissionForm />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/admin/admission-submissions"
+              element={
+                <PrivateRoute allowedRoles={['admin']}>
+                  <ManageAdmissionSubmissions />
                 </PrivateRoute>
               }
             />

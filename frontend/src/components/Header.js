@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { noticeAPI, admissionAPI, API_BASE_URL } from "../services/api";
+import { noticeAPI, admissionAPI } from "../services/api";
 
 const Header = () => {
   const { user, logout } = useAuth();
@@ -51,12 +51,7 @@ const Header = () => {
     }
   };
 
-  const blankAdmissionUrl = admissionTemplate
-    ? admissionTemplate.blank_download_url ||
-      `${API_BASE_URL}/admissions/templates/${admissionTemplate.slug}/blank/`
-    : null;
-
-  const shouldShowAdmissionCta = !user && blankAdmissionUrl;
+  const shouldShowAdmissionCta = !user && admissionTemplate;
 
   const handleLogout = () => {
     logout();
@@ -191,14 +186,12 @@ const Header = () => {
               Contact
             </Link>
             {shouldShowAdmissionCta ? (
-              <a
-                href={blankAdmissionUrl}
-                target="_blank"
-                rel="noopener noreferrer"
+              <Link
+                to="/admission"
                 className="px-4 py-2 bg-green-600 text-white hover:bg-green-700 transition rounded"
               >
                 Fillup Admission Form
-              </a>
+              </Link>
             ) : (
               !user && (
                 <button
@@ -367,15 +360,13 @@ const Header = () => {
                 Contact
               </Link>
               {shouldShowAdmissionCta ? (
-                <a
-                  href={blankAdmissionUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
+                <Link
+                  to="/admission"
                   className="px-4 py-2 bg-green-600 text-white rounded text-center"
                   onClick={() => setMobileMenuOpen(false)}
                 >
                   Fillup Admission Form
-                </a>
+                </Link>
               ) : (
                 !user && (
                   <button

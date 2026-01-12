@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { feeAPI, paymentAPI, API_BASE_URL } from '../../services/api';
+import { feeAPI, paymentAPI } from '../../services/api';
 import { useToast } from '../../context/ToastContext';
 
 const METHODS = [
@@ -15,20 +15,9 @@ const StudentFees = () => {
   const [loading, setLoading] = useState(true);
   const [paying, setPaying] = useState(null);
   const [form, setForm] = useState({ method: 'bkash', number: '', transaction_id: '' });
+  const [sslLoading, setSslLoading] = useState(false);
 
   useEffect(() => { load(); }, []);
-
-  useEffect(() => {
-    const scriptId = 'sslcommerz-embed';
-    if (document.getElementById(scriptId)) return;
-    const script = document.createElement('script');
-    script.id = scriptId;
-    const sandbox = (process.env.REACT_APP_SSLCOMMERZ_SANDBOX || 'true') !== 'false';
-    script.src = sandbox
-      ? `https://sandbox.sslcommerz.com/embed.min.js?${Math.random().toString(36).slice(2)}`
-      : `https://seamless-epay.sslcommerz.com/embed.min.js?${Math.random().toString(36).slice(2)}`;
-    document.body.appendChild(script);
-  }, []);
 
   const load = async () => {
     try { setLoading(true); const res = await feeAPI.getMyFees(); setFees(res.data); }
@@ -38,6 +27,25 @@ const StudentFees = () => {
 
   const openPay = (fee) => { setPaying(fee); setForm({ method: 'bkash', number: '', transaction_id: '' }); };
   const cancelPay = () => { setPaying(null); };
+
+  const startSslPayment = async () => {
+    if (!paying || sslLoading) return;
+    setSslLoading(true);
+    try {
+      const response = await paymentAPI.initSslcommerz({ fee_id: paying.fee_id });
+      const gatewayUrl = response.data?.data;
+      if (!gatewayUrl) {
+        toast.error(response.data?.message || response.data?.error || 'Failed to start payment');
+        return;
+      }
+      window.location.assign(gatewayUrl);
+    } catch (error) {
+      console.error(error);
+      toast.error(error.response?.data?.error || error.response?.data?.message || 'Failed to start payment');
+    } finally {
+      setSslLoading(false);
+    }
+  };
 
   const submit = async (e) => {
     e.preventDefault();
@@ -53,9 +61,6 @@ const StudentFees = () => {
       load();
     } catch (e) { console.error(e); toast.error('Failed to submit payment'); }
   };
-
-  const sslEndpoint = `${API_BASE_URL}/payments/sslcommerz/init/`;
-  const accessToken = localStorage.getItem('access_token') || '';
 
   if (loading) {
     return (
@@ -115,13 +120,12 @@ const StudentFees = () => {
               <h2 className="text-xl font-bold mb-4">Pay: {paying.title}</h2>
               <div className="mb-6">
                 <button
-                  id="sslczPayBtn"
-                  className="w-full px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
-                  endpoint={sslEndpoint}
-                  postdata={JSON.stringify({ fee_id: paying.fee_id })}
-                  token={accessToken}
+                  type="button"
+                  onClick={startSslPayment}
+                  disabled={sslLoading}
+                  className="w-full px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-60"
                 >
-                  Pay with SSLCOMMERZ
+                  {sslLoading ? 'Redirecting...' : 'Pay with SSLCOMMERZ'}
                 </button>
                 <p className="text-xs text-gray-500 mt-2">
                   Secure card and mobile banking payments via SSLCOMMERZ.

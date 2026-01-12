@@ -1,27 +1,14 @@
 import React, { useEffect, useState } from 'react';
-import { API_BASE_URL, transcriptAPI } from '../../services/api';
+import { transcriptAPI } from '../../services/api';
 import { useToast } from '../../context/ToastContext';
 
 const TranscriptRequest = () => {
   const toast = useToast();
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [sslLoading, setSslLoading] = useState(false);
 
   const amount = Number(process.env.REACT_APP_TRANSCRIPT_FEE_AMOUNT || 3500);
-  const accessToken = localStorage.getItem('access_token') || '';
-  const sslEndpoint = `${API_BASE_URL}/transcripts/sslcommerz/init/`;
-
-  useEffect(() => {
-    const scriptId = 'sslcommerz-embed';
-    if (document.getElementById(scriptId)) return;
-    const script = document.createElement('script');
-    script.id = scriptId;
-    const sandbox = (process.env.REACT_APP_SSLCOMMERZ_SANDBOX || 'true') !== 'false';
-    script.src = sandbox
-      ? `https://sandbox.sslcommerz.com/embed.min.js?${Math.random().toString(36).slice(2)}`
-      : `https://seamless-epay.sslcommerz.com/embed.min.js?${Math.random().toString(36).slice(2)}`;
-    document.body.appendChild(script);
-  }, []);
 
   const load = async () => {
     try {
@@ -38,6 +25,25 @@ const TranscriptRequest = () => {
 
   useEffect(() => { load(); }, []);
 
+  const startSslPayment = async () => {
+    if (sslLoading) return;
+    setSslLoading(true);
+    try {
+      const response = await transcriptAPI.initSslcommerz();
+      const gatewayUrl = response.data?.data;
+      if (!gatewayUrl) {
+        toast.error(response.data?.message || response.data?.error || 'Failed to start payment');
+        return;
+      }
+      window.location.assign(gatewayUrl);
+    } catch (error) {
+      console.error(error);
+      toast.error(error.response?.data?.error || error.response?.data?.message || 'Failed to start payment');
+    } finally {
+      setSslLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="container mx-auto px-4">
@@ -48,13 +54,12 @@ const TranscriptRequest = () => {
 
         <div className="bg-white rounded-lg shadow-md p-6 mb-8">
           <button
-            id="sslczPayBtn"
-            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
-            endpoint={sslEndpoint}
-            postdata={JSON.stringify({})}
-            token={accessToken}
+            type="button"
+            onClick={startSslPayment}
+            disabled={sslLoading}
+            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-60"
           >
-            Request Transcript (Pay BDT {amount})
+            {sslLoading ? 'Redirecting...' : `Request Transcript (Pay BDT ${amount})`}
           </button>
           <p className="text-xs text-gray-500 mt-2">
             Payment is required to submit your transcript request.
