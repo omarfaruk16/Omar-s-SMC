@@ -5,6 +5,8 @@ from rest_framework.response import Response
 from .models import Subject, AttendanceRecord, TimetableSlot, Mark, Exam, TeacherSubjectAssignment
 from .serializers import SubjectSerializer, AttendanceRecordSerializer, TimetableSlotSerializer, MarkSerializer, ExamSerializer, TeacherSubjectAssignmentSerializer
 from django.db import models
+from django.http import HttpResponse
+from .services import generate_exam_admit_card_pdf
 
 
 class SubjectViewSet(viewsets.ModelViewSet):
@@ -234,7 +236,7 @@ class ExamViewSet(viewsets.ModelViewSet):
             try:
                 student = user.student_profile
                 if student.student_class:
-                    qs = qs.filter(class_assigned=student.student_class)
+                    qs = qs.filter(class_assigned=student.student_class, published=True)
                 else:
                     return Exam.objects.none()
             except:
@@ -264,6 +266,52 @@ class ExamViewSet(viewsets.ModelViewSet):
         if request.user.role != 'admin':
             return Response({'error': 'Admin access required'}, status=status.HTTP_403_FORBIDDEN)
         return super().destroy(request, *args, **kwargs)
+
+    @action(detail=True, methods=['post'])
+    def publish(self, request, pk=None):
+        if request.user.role != 'admin':
+            return Response({'error': 'Admin access required'}, status=status.HTTP_403_FORBIDDEN)
+        exam = self.get_object()
+        exam.published = True
+        exam.save()
+        return Response({'message': 'Exam published'})
+
+    @action(detail=True, methods=['post'])
+    def unpublish(self, request, pk=None):
+        if request.user.role != 'admin':
+            return Response({'error': 'Admin access required'}, status=status.HTTP_403_FORBIDDEN)
+        exam = self.get_object()
+        exam.published = False
+        exam.save()
+        return Response({'message': 'Exam unpublished'})
+
+    @action(detail=False, methods=['get'], url_path='admit-card')
+    def admit_card(self, request):
+        if request.user.role != 'student':
+            return Response({'error': 'Student access required'}, status=status.HTTP_403_FORBIDDEN)
+
+        exam_title = request.query_params.get('exam_title')
+        class_id = request.query_params.get('class_id')
+        if not exam_title or not class_id:
+            return Response({'error': 'exam_title and class_id are required'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            student = request.user.student_profile
+        except Exception:
+            return Response({'error': 'Student profile not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        if str(student.student_class_id) != str(class_id):
+            return Response({'error': 'Not allowed for this class'}, status=status.HTTP_403_FORBIDDEN)
+
+        exams = Exam.objects.filter(title=exam_title, class_assigned_id=class_id, published=True).order_by('date', 'start_time')
+        if not exams.exists():
+            return Response({'error': 'No published exams found'}, status=status.HTTP_404_NOT_FOUND)
+
+        filename, pdf_bytes = generate_exam_admit_card_pdf(student, exam_title, exams)
+        response = HttpResponse(pdf_bytes, content_type='application/pdf')
+        response['Content-Disposition'] = f'attachment; filename=\"{filename}\"'
+        response['Content-Length'] = len(pdf_bytes)
+        return response
 
 
 class TeacherSubjectAssignmentViewSet(viewsets.ModelViewSet):

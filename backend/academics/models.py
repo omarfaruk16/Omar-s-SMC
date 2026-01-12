@@ -71,6 +71,7 @@ class Mark(models.Model):
     student = models.ForeignKey('users.Student', on_delete=models.CASCADE, related_name='marks')
     class_assigned = models.ForeignKey('classes.Class', on_delete=models.CASCADE, related_name='marks')
     subject = models.ForeignKey(Subject, on_delete=models.CASCADE, related_name='marks')
+    submission = models.ForeignKey('ResultSubmission', on_delete=models.SET_NULL, null=True, blank=True, related_name='marks')
     exam_name = models.CharField(max_length=100)
     score = models.FloatField()
     max_score = models.FloatField(default=100)
@@ -85,6 +86,34 @@ class Mark(models.Model):
         return f"{self.student} - {self.subject} - {self.exam_name}: {self.score}/{self.max_score}"
 
 
+class ResultSubmission(models.Model):
+    """Grouped result submission from a teacher for review/publish."""
+
+    STATUS_CHOICES = (
+        ('pending', 'Pending'),
+        ('published', 'Published'),
+        ('rejected', 'Rejected'),
+    )
+
+    teacher = models.ForeignKey('users.Teacher', on_delete=models.CASCADE, related_name='result_submissions')
+    class_assigned = models.ForeignKey('classes.Class', on_delete=models.CASCADE, related_name='result_submissions')
+    subjects = models.ManyToManyField(Subject, related_name='result_submissions', blank=True)
+    exam = models.ForeignKey('academics.Exam', on_delete=models.SET_NULL, null=True, blank=True, related_name='result_submissions')
+    exam_title = models.CharField(max_length=200)
+    max_score = models.FloatField(default=100)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    submitted_at = models.DateTimeField(auto_now_add=True)
+    reviewed_by = models.ForeignKey('users.User', on_delete=models.SET_NULL, null=True, blank=True, related_name='result_reviews')
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+    review_notes = models.TextField(blank=True, null=True)
+
+    class Meta:
+        ordering = ['-submitted_at']
+
+    def __str__(self):
+        return f"{self.exam_title} - {self.class_assigned}"
+
+
 class Exam(models.Model):
     """Exam schedule for a class/subject."""
     title = models.CharField(max_length=200)
@@ -95,6 +124,7 @@ class Exam(models.Model):
     end_time = models.TimeField(null=True, blank=True)
     description = models.TextField(blank=True, null=True)
     invigilator = models.ForeignKey('users.Teacher', on_delete=models.SET_NULL, null=True, blank=True, related_name='invigilations')
+    published = models.BooleanField(default=False)
 
     class Meta:
         ordering = ['date', 'start_time']

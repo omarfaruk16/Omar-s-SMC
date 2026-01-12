@@ -229,6 +229,12 @@ const Header = () => {
                 >
                   Dashboard
                 </Link>
+                <Link
+                  to="/profile"
+                  className="px-4 py-2 bg-white text-blue-600 border border-blue-600 rounded hover:bg-blue-50 transition"
+                >
+                  Profile
+                </Link>
                 <button
                   onClick={handleLogout}
                   className="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 transition"
@@ -391,6 +397,13 @@ const Header = () => {
                     onClick={() => setMobileMenuOpen(false)}
                   >
                     Dashboard
+                  </Link>
+                  <Link
+                    to="/profile"
+                    className="px-4 py-2 bg-white text-blue-600 border border-blue-600 rounded text-center"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    Profile
                   </Link>
                   <button onClick={() => { handleLogout(); setMobileMenuOpen(false); }} className="px-4 py-2 bg-gray-200 text-gray-700 rounded">
                     Logout

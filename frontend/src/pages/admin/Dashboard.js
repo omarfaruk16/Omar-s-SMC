@@ -506,6 +506,19 @@ const Dashboard = () => {
               </div>
             </Link>
             <Link
+              to="/admin/transcripts"
+              className="p-4 text-center border-2 border-gray-200 rounded-xl hover:border-sky-400 hover:bg-sky-50 transition-all duration-200 group"
+            >
+              <div className="flex flex-col items-center">
+                <div className="p-3 bg-sky-100 rounded-lg mb-2 group-hover:bg-sky-200 transition-colors">
+                  <svg className="w-6 h-6 text-sky-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 14l9-5-9-5-9 5 9 5zm0 0v6m-7-3l7 4 7-4" />
+                  </svg>
+                </div>
+                <p className="font-semibold text-sm">Transcripts</p>
+              </div>
+            </Link>
+            <Link
               to="/admin/teacher-assignments"
               className="p-4 text-center border-2 border-gray-200 rounded-xl hover:border-indigo-400 hover:bg-indigo-50 transition-all duration-200 group"
             >

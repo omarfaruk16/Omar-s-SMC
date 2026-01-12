@@ -21,6 +21,7 @@ const StudentDashboard = () => {
   const [admissionTemplate, setAdmissionTemplate] = useState(null);
   const [studentProfile, setStudentProfile] = useState(null);
   const [downloadingAdmissionForm, setDownloadingAdmissionForm] = useState(false);
+  const [downloadingAdmitCard, setDownloadingAdmitCard] = useState('');
   const [stats, setStats] = useState({
     totalClasses: 0,
     presentCount: 0,
@@ -133,9 +134,32 @@ const StudentDashboard = () => {
     }
   }, [admissionTemplate, studentProfile, toast]);
 
+  const handleDownloadAdmitCard = useCallback(async (examTitle, classId) => {
+    const key = `${examTitle}-${classId}`;
+    try {
+      setDownloadingAdmitCard(key);
+      const response = await examAPI.downloadAdmitCard(examTitle, classId);
+      const blob = new Blob([response.data], { type: 'application/pdf' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `admit-card-${examTitle.replace(/\s+/g, '_')}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Failed to download admit card', error);
+      toast.error('Unable to download admit card right now.');
+    } finally {
+      setDownloadingAdmitCard('');
+    }
+  }, [toast]);
+
   const menuItems = useMemo(() => [
     { key: 'materials', title: 'Study Materials', path: '/student/materials', icon: '📚', description: 'Access class materials and resources', color: 'from-blue-500 to-blue-600' },
     { key: 'fees', title: 'Fees & Payments', path: '/student/fees', icon: '💰', description: 'View and pay your fees', color: 'from-green-500 to-emerald-600' },
+    { key: 'transcripts', title: 'Transcript Request', path: '/student/transcripts', icon: 'TR', description: 'Request your transcript', color: 'from-indigo-500 to-indigo-600' },
     { key: 'attendance', title: 'Attendance', path: '/student/attendance', icon: '✅', description: 'View your attendance', color: 'from-purple-500 to-indigo-600' },
     { key: 'timetable', title: 'Timetable', path: '/student/timetable', icon: '🗓️', description: 'View class timetable', color: 'from-orange-500 to-amber-600' },
     {
@@ -403,6 +427,14 @@ const StudentDashboard = () => {
         const weekday = modalDate.getDay() === 0 ? 6 : modalDate.getDay()-1;
         const daySlots = slots.filter(s => s.weekday === weekday);
         const dayExams = exams.filter(e => e.date === dstr);
+        const examGroups = dayExams.reduce((acc, exam) => {
+          const key = `${exam.title}-${exam.class_assigned}`;
+          if (!acc[key]) {
+            acc[key] = { title: exam.title, class_assigned: exam.class_assigned };
+          }
+          return acc;
+        }, {});
+        const admitCardGroups = Object.values(examGroups);
         return (
           <div className="space-y-4">
             <div>
@@ -420,9 +452,34 @@ const StudentDashboard = () => {
             <div>
               <h4 className="font-semibold mb-2">Exams</h4>
               {dayExams.length === 0 ? <div className="text-sm text-gray-500">No exams</div> : (
-                <ul className="text-sm space-y-1">
-                  {dayExams.map(e => (<li key={e.id}><span className="font-medium">{e.title}</span>{e.subject_name ? ` · ${e.subject_name}` : ''}{e.start_time ? ` · ${e.start_time}-${e.end_time||''}` : ''}</li>))}
-                </ul>
+                <div className="space-y-3">
+                  <ul className="text-sm space-y-1">
+                    {dayExams.map(e => (
+                      <li key={e.id}>
+                        <span className="font-medium">{e.title}</span>
+                        {e.subject_name ? ` · ${e.subject_name}` : ''}
+                        {e.start_time ? ` · ${e.start_time}-${e.end_time||''}` : ''}
+                      </li>
+                    ))}
+                  </ul>
+                  <div className="space-y-2">
+                    {admitCardGroups.map(group => {
+                      const key = `${group.title}-${group.class_assigned}`;
+                      const isLoading = downloadingAdmitCard === key;
+                      return (
+                        <button
+                          key={key}
+                          type="button"
+                          onClick={() => handleDownloadAdmitCard(group.title, group.class_assigned)}
+                          disabled={isLoading}
+                          className={`px-3 py-2 text-sm rounded ${isLoading ? 'bg-gray-300 text-gray-700' : 'bg-blue-600 text-white'}`}
+                        >
+                          {isLoading ? 'Preparing Admit Card...' : `Download Admit Card (${group.title})`}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
               )}
             </div>
           </div>

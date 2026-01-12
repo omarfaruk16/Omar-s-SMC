@@ -25,6 +25,9 @@ import LibraryInformation from './pages/LibraryInformation';
 import Login from './pages/Login';
 import TeacherRegister from './pages/TeacherRegister';
 import StudentRegister from './pages/StudentRegister';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
+import Profile from './pages/Profile';
 
 // Admin Dashboard
 import AdminDashboard from './pages/admin/Dashboard';
@@ -43,6 +46,7 @@ import ManageMarks from './pages/admin/ManageMarks';
 import TeacherAssignments from './pages/admin/TeacherAssignments';
 import ManageTeacherAssignments from './pages/admin/ManageTeacherAssignments';
 import ManageAdmissionForm from './pages/admin/ManageAdmissionForm';
+import ManageTranscripts from './pages/admin/ManageTranscripts';
 
 // Teacher Dashboard
 import TeacherDashboard from './pages/teacher/Dashboard';
@@ -59,6 +63,10 @@ import StudentMaterials from './pages/student/Materials';
 import StudentFees from './pages/student/Fees';
 import StudentAttendance from './pages/student/Attendance';
 import StudentTimetable from './pages/student/Timetable';
+import TranscriptRequest from './pages/student/TranscriptRequest';
+import PaymentSuccess from './pages/PaymentSuccess';
+import PaymentFail from './pages/PaymentFail';
+import PaymentCancel from './pages/PaymentCancel';
 
 function App() {
   return (
@@ -87,6 +95,11 @@ function App() {
             <Route path="/login" element={<Login />} />
             <Route path="/register/teacher" element={<TeacherRegister />} />
             <Route path="/register/student" element={<StudentRegister />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
+            <Route path="/payment/success" element={<PaymentSuccess />} />
+            <Route path="/payment/fail" element={<PaymentFail />} />
+            <Route path="/payment/cancel" element={<PaymentCancel />} />
 
             {/* Admin Routes */}
             <Route
@@ -217,6 +230,14 @@ function App() {
                 </PrivateRoute>
               }
             />
+            <Route
+              path="/admin/transcripts"
+              element={
+                <PrivateRoute allowedRoles={['admin']}>
+                  <ManageTranscripts />
+                </PrivateRoute>
+              }
+            />
 
             {/* Teacher Routes */}
             <Route
@@ -314,6 +335,22 @@ function App() {
               element={
                 <PrivateRoute allowedRoles={['student']}>
                   <StudentTimetable />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/student/transcripts"
+              element={
+                <PrivateRoute allowedRoles={['student']}>
+                  <TranscriptRequest />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/profile"
+              element={
+                <PrivateRoute allowedRoles={['admin', 'teacher', 'student']}>
+                  <Profile />
                 </PrivateRoute>
               }
             />

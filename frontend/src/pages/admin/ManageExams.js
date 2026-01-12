@@ -50,6 +50,26 @@ const ManageExams = () => {
     try { await examAPI.delete(id); setExams(exams.filter(x=>x.id!==id)); toast.success('Exam deleted'); }
     catch(e){ console.error(e); toast.error('Failed to delete exam'); }
   };
+  const publish = async (id) => {
+    try {
+      await examAPI.publish(id);
+      setExams(exams.map(e => e.id === id ? { ...e, published: true } : e));
+      toast.success('Exam published');
+    } catch (e) {
+      console.error(e);
+      toast.error('Failed to publish exam');
+    }
+  };
+  const unpublish = async (id) => {
+    try {
+      await examAPI.unpublish(id);
+      setExams(exams.map(e => e.id === id ? { ...e, published: false } : e));
+      toast.success('Exam unpublished');
+    } catch (e) {
+      console.error(e);
+      toast.error('Failed to unpublish exam');
+    }
+  };
 
   if (loading) return <div className="min-h-screen bg-gray-50 py-8 flex items-center justify-center"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" /></div>;
 
@@ -111,6 +131,7 @@ const ManageExams = () => {
                     <th className="px-6 py-3 text-left font-medium text-gray-500 uppercase">Subject</th>
                     <th className="px-6 py-3 text-left font-medium text-gray-500 uppercase">Date</th>
                     <th className="px-6 py-3 text-left font-medium text-gray-500 uppercase">Time</th>
+                    <th className="px-6 py-3 text-left font-medium text-gray-500 uppercase">Status</th>
                     <th className="px-6 py-3 text-left font-medium text-gray-500 uppercase">Actions</th>
                   </tr>
                 </thead>
@@ -122,7 +143,15 @@ const ManageExams = () => {
                       <td className="px-6 py-4">{e.subject_name || '-'}</td>
                       <td className="px-6 py-4">{e.date}</td>
                       <td className="px-6 py-4">{e.start_time || '-'}{e.end_time ? ` - ${e.end_time}` : ''}</td>
-                      <td className="px-6 py-4"><button onClick={()=>remove(e.id)} className="px-3 py-1 bg-red-600 text-white rounded">Delete</button></td>
+                      <td className="px-6 py-4">{e.published ? 'Published' : 'Draft'}</td>
+                      <td className="px-6 py-4 space-x-2">
+                        {e.published ? (
+                          <button onClick={()=>unpublish(e.id)} className="px-3 py-1 bg-yellow-600 text-white rounded">Unpublish</button>
+                        ) : (
+                          <button onClick={()=>publish(e.id)} className="px-3 py-1 bg-green-600 text-white rounded">Publish</button>
+                        )}
+                        <button onClick={()=>remove(e.id)} className="px-3 py-1 bg-red-600 text-white rounded">Delete</button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>

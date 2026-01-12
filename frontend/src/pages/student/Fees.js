@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { feeAPI, paymentAPI } from '../../services/api';
+import { feeAPI, paymentAPI, API_BASE_URL } from '../../services/api';
 import { useToast } from '../../context/ToastContext';
 
 const METHODS = [
@@ -17,6 +17,18 @@ const StudentFees = () => {
   const [form, setForm] = useState({ method: 'bkash', number: '', transaction_id: '' });
 
   useEffect(() => { load(); }, []);
+
+  useEffect(() => {
+    const scriptId = 'sslcommerz-embed';
+    if (document.getElementById(scriptId)) return;
+    const script = document.createElement('script');
+    script.id = scriptId;
+    const sandbox = (process.env.REACT_APP_SSLCOMMERZ_SANDBOX || 'true') !== 'false';
+    script.src = sandbox
+      ? `https://sandbox.sslcommerz.com/embed.min.js?${Math.random().toString(36).slice(2)}`
+      : `https://seamless-epay.sslcommerz.com/embed.min.js?${Math.random().toString(36).slice(2)}`;
+    document.body.appendChild(script);
+  }, []);
 
   const load = async () => {
     try { setLoading(true); const res = await feeAPI.getMyFees(); setFees(res.data); }
@@ -41,6 +53,9 @@ const StudentFees = () => {
       load();
     } catch (e) { console.error(e); toast.error('Failed to submit payment'); }
   };
+
+  const sslEndpoint = `${API_BASE_URL}/payments/sslcommerz/init/`;
+  const accessToken = localStorage.getItem('access_token') || '';
 
   if (loading) {
     return (
@@ -98,6 +113,20 @@ const StudentFees = () => {
           <div className="fixed inset-0 bg-black/30 flex items-center justify-center p-4">
             <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-lg">
               <h2 className="text-xl font-bold mb-4">Pay: {paying.title}</h2>
+              <div className="mb-6">
+                <button
+                  id="sslczPayBtn"
+                  className="w-full px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+                  endpoint={sslEndpoint}
+                  postdata={JSON.stringify({ fee_id: paying.fee_id })}
+                  token={accessToken}
+                >
+                  Pay with SSLCOMMERZ
+                </button>
+                <p className="text-xs text-gray-500 mt-2">
+                  Secure card and mobile banking payments via SSLCOMMERZ.
+                </p>
+              </div>
               <form onSubmit={submit} className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Method *</label>

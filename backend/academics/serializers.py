@@ -90,7 +90,7 @@ class ExamSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Exam
-        fields = ['id', 'title', 'class_assigned', 'class_name', 'subject', 'subject_name', 'date', 'start_time', 'end_time', 'description', 'invigilator', 'invigilator_name']
+        fields = ['id', 'title', 'class_assigned', 'class_name', 'subject', 'subject_name', 'date', 'start_time', 'end_time', 'description', 'invigilator', 'invigilator_name', 'published']
         read_only_fields = ['id', 'class_name', 'subject_name', 'invigilator_name']
 
     def get_class_name(self, obj):

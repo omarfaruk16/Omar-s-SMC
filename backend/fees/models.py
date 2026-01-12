@@ -49,6 +49,7 @@ class Payment(models.Model):
         ('nagad', 'Nagad'),
         ('rocket', 'Rocket'),
         ('cash', 'Cash'),
+        ('sslcommerz', 'SSLCommerz'),
     )
     
     STATUS_CHOICES = (
@@ -62,6 +63,7 @@ class Payment(models.Model):
     method = models.CharField(max_length=10, choices=METHOD_CHOICES)
     number = models.CharField(max_length=20, blank=True, null=True, help_text='Mobile number for digital payments')
     transaction_id = models.CharField(max_length=50, blank=True, null=True, verbose_name='Transaction ID')
+    gateway_payload = models.JSONField(blank=True, null=True)
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='pending')
     payment_date = models.DateTimeField(default=timezone.now)
     approved_date = models.DateTimeField(blank=True, null=True)
