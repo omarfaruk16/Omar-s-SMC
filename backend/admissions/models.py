@@ -155,3 +155,33 @@ class AdmissionFormSubmission(models.Model):
         last = self.form_data.get("last_name") or ""
         full_name = f"{name} {last}".strip() or "Admission Form"
         return f"{full_name} - {self.status}"
+
+
+class AdmissionPaymentIntent(models.Model):
+    STATUS_CHOICES = (
+        ("pending", "Pending"),
+        ("paid", "Paid"),
+        ("failed", "Failed"),
+    )
+
+    template = models.ForeignKey(
+        AdmissionFormTemplate,
+        on_delete=models.PROTECT,
+        related_name="payment_intents",
+    )
+    form_data = models.JSONField()
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    transaction_id = models.CharField(max_length=64, unique=True)
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default="pending")
+    gateway_payload = models.JSONField(blank=True, null=True)
+    created_at = models.DateTimeField(default=timezone.now)
+    paid_at = models.DateTimeField(blank=True, null=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self) -> str:
+        name = self.form_data.get("first_name") or ""
+        last = self.form_data.get("last_name") or ""
+        full_name = f"{name} {last}".strip() or "Admission Payment"
+        return f"{full_name} - {self.status}"

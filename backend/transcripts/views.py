@@ -1,10 +1,11 @@
 import json
 import uuid
 from decimal import Decimal, InvalidOperation
-from urllib.parse import urlencode
+from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 from urllib.request import Request, urlopen
 
 from django.conf import settings
+from django.http import HttpResponseRedirect
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 from rest_framework import status, viewsets
@@ -30,6 +31,18 @@ def _sslcommerz_init_url():
 
 def _sslcommerz_validation_url():
     return f"{_sslcommerz_base_url()}/validator/api/validationserverAPI.php"
+
+
+def _append_query_param(url: str, params: dict) -> str:
+    parts = urlparse(url)
+    query = dict(parse_qsl(parts.query))
+    query.update({k: v for k, v in params.items() if v is not None})
+    return urlunparse(parts._replace(query=urlencode(query)))
+
+
+def _build_return_url(request, result: str) -> str:
+    base_url = request.build_absolute_uri("/api/transcripts/sslcommerz/return/")
+    return _append_query_param(base_url, {"result": result, "source": "transcript"})
 
 
 def _get_user_from_token(token):
@@ -126,9 +139,9 @@ class TranscriptInitView(APIView):
             'total_amount': str(amount),
             'currency': settings.SSLCOMMERZ_CURRENCY,
             'tran_id': tran_id,
-            'success_url': settings.SSLCOMMERZ_SUCCESS_URL,
-            'fail_url': settings.SSLCOMMERZ_FAIL_URL,
-            'cancel_url': settings.SSLCOMMERZ_CANCEL_URL,
+            'success_url': _build_return_url(request, 'success'),
+            'fail_url': _build_return_url(request, 'fail'),
+            'cancel_url': _build_return_url(request, 'cancel'),
             'ipn_url': settings.SSLCOMMERZ_TRANSCRIPT_IPN_URL,
             'product_category': 'education',
             'product_name': 'Transcript Request',
@@ -243,3 +256,72 @@ class TranscriptIPNView(APIView):
         payment.status = 'failed'
         payment.save(update_fields=['status'])
         return Response('Payment rejected')
+
+
+class TranscriptReturnView(APIView):
+    permission_classes = [AllowAny]
+
+    def _handle(self, request):
+        data = request.data if request.method == 'POST' else request.query_params
+        tran_id = data.get('tran_id')
+        status_value = data.get('status')
+        val_id = data.get('val_id')
+
+        payment = TranscriptPayment.objects.filter(transaction_id=tran_id).first() if tran_id else None
+        result = 'failed'
+
+        if payment and status_value in ['VALID', 'VALIDATED'] and val_id:
+            try:
+                validation_params = {
+                    'val_id': val_id,
+                    'store_id': settings.SSLCOMMERZ_STORE_ID,
+                    'store_passwd': settings.SSLCOMMERZ_STORE_PASSWORD,
+                    'format': 'json',
+                }
+                url = f"{_sslcommerz_validation_url()}?{urlencode(validation_params)}"
+                with urlopen(url, timeout=30) as response:
+                    validation_raw = response.read().decode('utf-8')
+                validation_data = json.loads(validation_raw)
+
+                payment.gateway_payload = payment.gateway_payload or {}
+                payment.gateway_payload['validation'] = validation_data
+                payment.save(update_fields=['gateway_payload'])
+
+                amount = Decimal(str(validation_data.get('amount')))
+                if validation_data.get('status') in ['VALID', 'VALIDATED'] and amount == payment.amount:
+                    payment.status = 'paid'
+                    payment.paid_at = timezone.now()
+                    payment.save(update_fields=['status', 'paid_at'])
+
+                    TranscriptRequest.objects.get_or_create(
+                        payment=payment,
+                        defaults={
+                            'student': payment.student,
+                            'status': 'pending_review',
+                            'requested_at': timezone.now(),
+                        },
+                    )
+                    result = 'success'
+            except Exception:
+                result = 'failed'
+
+        if payment and result != 'success' and payment.status == 'pending':
+            payment.status = 'failed'
+            payment.save(update_fields=['status'])
+
+        frontend_url = f"{settings.FRONTEND_BASE_URL.rstrip('/')}/student/dashboard"
+        redirect_url = _append_query_param(
+            frontend_url,
+            {
+                'payment': result,
+                'source': 'transcript',
+                'tran_id': tran_id,
+            },
+        )
+        return HttpResponseRedirect(redirect_url)
+
+    def post(self, request, *args, **kwargs):
+        return self._handle(request)
+
+    def get(self, request, *args, **kwargs):
+        return self._handle(request)

@@ -119,6 +119,7 @@ class Exam(models.Model):
     title = models.CharField(max_length=200)
     class_assigned = models.ForeignKey('classes.Class', on_delete=models.CASCADE, related_name='exams')
     subject = models.ForeignKey(Subject, on_delete=models.SET_NULL, null=True, blank=True, related_name='exams')
+    exam_fee = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     date = models.DateField()
     start_time = models.TimeField(null=True, blank=True)
     end_time = models.TimeField(null=True, blank=True)

@@ -9,7 +9,7 @@ const ManageExams = () => {
   const [subjects, setSubjects] = useState([]);
   const [teachers, setTeachers] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [form, setForm] = useState({ title:'', class_ids:[], papers:[{ subject:'', date:'', start_time:'', end_time:'', invigilator:'' }], description:'' });
+  const [form, setForm] = useState({ title:'', exam_fee:'', class_ids:[], papers:[{ subject:'', date:'', start_time:'', end_time:'', invigilator:'' }], description:'' });
 
   useEffect(() => { load(); }, []);
   const load = async () => {
@@ -30,6 +30,7 @@ const ManageExams = () => {
             title: form.title,
             class_assigned: cid,
             subject: Number(p.subject),
+            exam_fee: form.exam_fee ? Number(form.exam_fee) : null,
             date: p.date,
             start_time: p.start_time || null,
             end_time: p.end_time || null,
@@ -40,7 +41,7 @@ const ManageExams = () => {
       });
       await Promise.all(payloads.map(pl => examAPI.create(pl)));
       toast.success('Exam schedule created');
-      setForm({ title:'', class_ids:[], papers:[{ subject:'', date:'', start_time:'', end_time:'', invigilator:'' }], description:'' });
+      setForm({ title:'', exam_fee:'', class_ids:[], papers:[{ subject:'', date:'', start_time:'', end_time:'', invigilator:'' }], description:'' });
       load();
     }
     catch(e){ console.error(e); toast.error('Failed to create exam'); }
@@ -80,8 +81,9 @@ const ManageExams = () => {
         <div className="bg-white rounded-lg shadow-md p-6 mb-6">
           <h2 className="text-xl font-bold mb-4">Create Exam</h2>
           <form onSubmit={submit} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
               <input type="text" placeholder="Exam Title (e.g., Mid Term)" value={form.title} onChange={(e)=>setForm({...form, title:e.target.value})} className="px-3 py-2 border rounded" required />
+              <input type="number" min="0" step="0.01" placeholder="Exam Fee (BDT)" value={form.exam_fee} onChange={(e)=>setForm({...form, exam_fee:e.target.value})} className="px-3 py-2 border rounded" required />
               <select multiple value={form.class_ids} onChange={(e)=>setForm({...form, class_ids: Array.from(e.target.selectedOptions).map(o=>Number(o.value))})} className="px-3 py-2 border rounded h-28">
                 {classes.map(c => (<option key={c.id} value={c.id}>{c.name}{c.section?` - ${c.section}`:''}</option>))}
               </select>

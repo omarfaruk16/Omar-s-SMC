@@ -1,17 +1,18 @@
 import json
 import uuid
 from decimal import Decimal, InvalidOperation
-from urllib.parse import urlencode
+from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 from urllib.request import urlopen, Request
 
 from django.conf import settings
+from django.http import HttpResponseRedirect
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.utils import timezone
-from .models import Fee, Payment
+from .models import Fee, Payment, FeePaymentIntent
 from .serializers import (
     FeeSerializer, PaymentSerializer, 
     PaymentCreateSerializer, FeeStudentSerializer
@@ -34,6 +35,72 @@ def _sslcommerz_init_url():
 def _sslcommerz_validation_url():
     return f"{_sslcommerz_base_url()}/validator/api/validationserverAPI.php"
 
+
+def _append_query_param(url: str, params: dict) -> str:
+    parts = urlparse(url)
+    query = dict(parse_qsl(parts.query))
+    query.update({k: v for k, v in params.items() if v is not None})
+    return urlunparse(parts._replace(query=urlencode(query)))
+
+
+def _build_return_url(request, result: str) -> str:
+    base_url = request.build_absolute_uri("/api/payments/sslcommerz/return/")
+    return _append_query_param(base_url, {"result": result, "source": "fees"})
+
+
+def _validate_fee_intent_payment(intent: FeePaymentIntent, val_id: str) -> dict | None:
+    validation_params = {
+        'val_id': val_id,
+        'store_id': settings.SSLCOMMERZ_STORE_ID,
+        'store_passwd': settings.SSLCOMMERZ_STORE_PASSWORD,
+        'format': 'json',
+    }
+
+    url = f"{_sslcommerz_validation_url()}?{urlencode(validation_params)}"
+    with urlopen(url, timeout=30) as response:
+        validation_raw = response.read().decode('utf-8')
+    validation_data = json.loads(validation_raw)
+
+    intent.gateway_payload = intent.gateway_payload or {}
+    intent.gateway_payload['validation'] = validation_data
+    intent.save(update_fields=['gateway_payload'])
+
+    try:
+        amount = Decimal(str(validation_data.get('amount')))
+    except (InvalidOperation, TypeError):
+        amount = None
+
+    if validation_data.get('status') in ['VALID', 'VALIDATED'] and amount == intent.amount:
+        return validation_data
+    return None
+
+
+def _approve_fee_intent(intent: FeePaymentIntent, validation_data: dict, ipn_payload: dict | None = None) -> Payment:
+    payment = Payment.objects.filter(student=intent.student, fee=intent.fee, status='approved').first()
+    if payment:
+        return payment
+
+    gateway_payload = intent.gateway_payload or {}
+    if ipn_payload:
+        gateway_payload['ipn'] = ipn_payload
+    gateway_payload['validation'] = validation_data
+
+    payment = Payment.objects.create(
+        student=intent.student,
+        fee=intent.fee,
+        method='sslcommerz',
+        transaction_id=intent.transaction_id,
+        status='approved',
+        payment_date=timezone.now(),
+        approved_date=timezone.now(),
+        gateway_payload=gateway_payload,
+    )
+
+    intent.status = 'paid'
+    intent.paid_at = timezone.now()
+    intent.gateway_payload = gateway_payload
+    intent.save(update_fields=['status', 'paid_at', 'gateway_payload'])
+    return payment
 
 def _get_user_from_token(token):
     if not token:
@@ -154,6 +221,13 @@ class FeeViewSet(viewsets.ModelViewSet):
                     'month': fee.month,
                     'amount': str(fee.amount),
                     'fee_status': fee.status,
+                    'fee_type': fee.fee_type,
+                    'class_id': fee.class_assigned_id,
+                    'exam_title': (
+                        fee.exam.title
+                        if fee.exam
+                        else fee.title.replace(' Exam Fee', '') if fee.fee_type == 'exam' else None
+                    ),
                     'payment_status': payment.status if payment else 'not_paid',
                     'payment_id': payment.id if payment else None,
                     'payment_method': payment.method if payment else None,
@@ -342,13 +416,13 @@ class SSLCommerzInitView(APIView):
             return Response({'error': 'Payment gateway not configured'}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
 
         tran_id = f"FEE{fee.id}-{uuid.uuid4().hex[:10].upper()}"
-        payment = Payment.objects.create(
+        intent = FeePaymentIntent.objects.create(
             student=student,
             fee=fee,
-            method='sslcommerz',
+            amount=fee.amount,
             transaction_id=tran_id,
             status='pending',
-            payment_date=timezone.now(),
+            created_at=timezone.now(),
         )
 
         customer_name = user.get_full_name() or user.email
@@ -358,9 +432,9 @@ class SSLCommerzInitView(APIView):
             'total_amount': str(fee.amount),
             'currency': settings.SSLCOMMERZ_CURRENCY,
             'tran_id': tran_id,
-            'success_url': settings.SSLCOMMERZ_SUCCESS_URL,
-            'fail_url': settings.SSLCOMMERZ_FAIL_URL,
-            'cancel_url': settings.SSLCOMMERZ_CANCEL_URL,
+            'success_url': _build_return_url(request, 'success'),
+            'fail_url': _build_return_url(request, 'fail'),
+            'cancel_url': _build_return_url(request, 'cancel'),
             'ipn_url': settings.SSLCOMMERZ_IPN_URL,
             'product_category': 'education',
             'product_name': fee.title,
@@ -375,7 +449,7 @@ class SSLCommerzInitView(APIView):
             'shipping_method': 'NO',
             'num_of_item': 1,
             'weight_of_items': '0.1',
-            'value_a': str(payment.id),
+            'value_a': str(intent.id),
         }
 
         try:
@@ -386,17 +460,20 @@ class SSLCommerzInitView(APIView):
                 raw = response.read().decode('utf-8')
             ssl_response = json.loads(raw)
         except Exception as exc:
-            payment.gateway_payload = {'error': str(exc)}
-            payment.save(update_fields=['gateway_payload'])
+            intent.gateway_payload = {'error': str(exc)}
+            intent.status = 'failed'
+            intent.save(update_fields=['gateway_payload', 'status'])
             return Response({'status': 'fail', 'message': 'Failed to connect with SSLCOMMERZ'}, status=status.HTTP_502_BAD_GATEWAY)
 
-        payment.gateway_payload = {'init_response': ssl_response}
-        payment.save(update_fields=['gateway_payload'])
+        intent.gateway_payload = {'init_response': ssl_response}
+        intent.save(update_fields=['gateway_payload'])
 
         gateway_url = ssl_response.get('GatewayPageURL')
         if gateway_url:
             return Response({'status': 'success', 'data': gateway_url, 'logo': ssl_response.get('storeLogo')})
 
+        intent.status = 'failed'
+        intent.save(update_fields=['status'])
         return Response({'status': 'fail', 'message': ssl_response.get('failedreason') or 'Gateway error'}, status=status.HTTP_400_BAD_REQUEST)
 
 
@@ -412,17 +489,17 @@ class SSLCommerzIPNView(APIView):
         if not tran_id:
             return Response('Missing transaction ID', status=status.HTTP_400_BAD_REQUEST)
 
-        payment = Payment.objects.filter(transaction_id=tran_id, method='sslcommerz').first()
-        if not payment:
-            return Response('Payment not found', status=status.HTTP_404_NOT_FOUND)
+        intent = FeePaymentIntent.objects.filter(transaction_id=tran_id).first()
+        if not intent:
+            return Response('Payment intent not found', status=status.HTTP_404_NOT_FOUND)
 
-        payment.gateway_payload = payment.gateway_payload or {}
-        payment.gateway_payload['ipn'] = data
-        payment.save(update_fields=['gateway_payload'])
+        intent.gateway_payload = intent.gateway_payload or {}
+        intent.gateway_payload['ipn'] = data
+        intent.save(update_fields=['gateway_payload'])
 
         if status_value not in ['VALID', 'VALIDATED']:
-            payment.status = 'rejected'
-            payment.save(update_fields=['status'])
+            intent.status = 'failed'
+            intent.save(update_fields=['status'])
             return Response('IPN received')
 
         if not val_id:
@@ -436,29 +513,60 @@ class SSLCommerzIPNView(APIView):
         }
 
         try:
-            url = f"{_sslcommerz_validation_url()}?{urlencode(validation_params)}"
-            with urlopen(url, timeout=30) as response:
-                validation_raw = response.read().decode('utf-8')
-            validation_data = json.loads(validation_raw)
+            validation_data = _validate_fee_intent_payment(intent, val_id)
         except Exception as exc:
-            payment.gateway_payload['validation_error'] = str(exc)
-            payment.save(update_fields=['gateway_payload'])
+            intent.gateway_payload['validation_error'] = str(exc)
+            intent.save(update_fields=['gateway_payload'])
             return Response('Validation failed', status=status.HTTP_502_BAD_GATEWAY)
 
-        payment.gateway_payload['validation'] = validation_data
-        payment.save(update_fields=['gateway_payload'])
-
-        try:
-            amount = Decimal(str(validation_data.get('amount')))
-        except (InvalidOperation, TypeError):
-            amount = None
-
-        if validation_data.get('status') in ['VALID', 'VALIDATED'] and amount == payment.fee.amount:
-            payment.status = 'approved'
-            payment.approved_date = timezone.now()
-            payment.save(update_fields=['status', 'approved_date'])
+        if validation_data:
+            _approve_fee_intent(intent, validation_data, ipn_payload=data)
             return Response('Payment validated')
 
-        payment.status = 'rejected'
-        payment.save(update_fields=['status'])
+        intent.status = 'failed'
+        intent.save(update_fields=['status'])
         return Response('Payment rejected')
+
+
+class SSLCommerzReturnView(APIView):
+    permission_classes = [AllowAny]
+
+    def _handle(self, request):
+        data = request.data if request.method == 'POST' else request.query_params
+        tran_id = data.get('tran_id')
+        status_value = data.get('status')
+        val_id = data.get('val_id')
+
+        intent = FeePaymentIntent.objects.filter(transaction_id=tran_id).first() if tran_id else None
+        result = 'failed'
+
+        if status_value in ['VALID', 'VALIDATED'] and val_id and intent:
+            try:
+                validation_data = _validate_fee_intent_payment(intent, val_id)
+                if validation_data:
+                    _approve_fee_intent(intent, validation_data, ipn_payload=data)
+                    result = 'success'
+            except Exception:
+                result = 'failed'
+
+        if intent and result != 'success' and intent.status == 'pending':
+            intent.status = 'failed'
+            intent.save(update_fields=['status'])
+
+        frontend_url = f"{settings.FRONTEND_BASE_URL.rstrip('/')}/student/dashboard"
+        redirect_url = _append_query_param(
+            frontend_url,
+            {
+                'payment': result,
+                'source': 'fees',
+                'tran_id': tran_id,
+                'fee_id': intent.fee_id if intent else None,
+            },
+        )
+        return HttpResponseRedirect(redirect_url)
+
+    def post(self, request, *args, **kwargs):
+        return self._handle(request)
+
+    def get(self, request, *args, **kwargs):
+        return self._handle(request)

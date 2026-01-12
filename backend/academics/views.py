@@ -7,6 +7,7 @@ from .serializers import SubjectSerializer, AttendanceRecordSerializer, Timetabl
 from django.db import models
 from django.http import HttpResponse
 from .services import generate_exam_admit_card_pdf
+from fees.models import Fee, Payment
 
 
 class SubjectViewSet(viewsets.ModelViewSet):
@@ -221,6 +222,35 @@ class ExamViewSet(viewsets.ModelViewSet):
     serializer_class = ExamSerializer
     permission_classes = [IsAuthenticated]
 
+    def _ensure_exam_fee(self, exam):
+        if not exam.exam_fee or exam.exam_fee <= 0:
+            return
+
+        month_key = exam.date.strftime('%B').lower()
+        fee_title = f"{exam.title} Exam Fee"
+        existing_fee = Fee.objects.filter(
+            class_assigned=exam.class_assigned,
+            title=fee_title,
+            fee_type='exam',
+            month=month_key,
+        ).first()
+
+        if existing_fee:
+            if existing_fee.exam_id is None:
+                existing_fee.exam = exam
+                existing_fee.save(update_fields=['exam'])
+            return
+
+        Fee.objects.create(
+            title=fee_title,
+            class_assigned=exam.class_assigned,
+            exam=exam,
+            amount=exam.exam_fee,
+            month=month_key,
+            status='running',
+            fee_type='exam',
+        )
+
     def get_queryset(self):
         user = self.request.user
         qs = Exam.objects.all()
@@ -255,7 +285,15 @@ class ExamViewSet(viewsets.ModelViewSet):
     def create(self, request, *args, **kwargs):
         if request.user.role != 'admin':
             return Response({'error': 'Admin access required'}, status=status.HTTP_403_FORBIDDEN)
-        return super().create(request, *args, **kwargs)
+        response = super().create(request, *args, **kwargs)
+        if response.status_code < 300:
+            try:
+                exam = Exam.objects.filter(id=response.data.get('id')).first()
+                if exam:
+                    self._ensure_exam_fee(exam)
+            except Exception:
+                pass
+        return response
 
     def update(self, request, *args, **kwargs):
         if request.user.role != 'admin':
@@ -306,6 +344,19 @@ class ExamViewSet(viewsets.ModelViewSet):
         exams = Exam.objects.filter(title=exam_title, class_assigned_id=class_id, published=True).order_by('date', 'start_time')
         if not exams.exists():
             return Response({'error': 'No published exams found'}, status=status.HTTP_404_NOT_FOUND)
+
+        fee_title = f"{exam_title} Exam Fee"
+        fee = Fee.objects.filter(
+            class_assigned_id=class_id,
+            title=fee_title,
+            fee_type='exam',
+        ).first()
+        if not fee:
+            return Response({'error': 'Exam fee not configured'}, status=status.HTTP_404_NOT_FOUND)
+
+        payment = Payment.objects.filter(student=student, fee=fee, status='approved').first()
+        if not payment:
+            return Response({'error': 'Exam fee payment required'}, status=status.HTTP_403_FORBIDDEN)
 
         filename, pdf_bytes = generate_exam_admit_card_pdf(student, exam_title, exams)
         response = HttpResponse(pdf_bytes, content_type='application/pdf')

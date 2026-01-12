@@ -5,7 +5,7 @@ from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 from urllib.request import Request, urlopen
 
 from django.conf import settings
-from django.http import HttpResponse
+from django.http import HttpResponse, HttpResponseRedirect
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from rest_framework import status, viewsets
@@ -16,7 +16,7 @@ from rest_framework.views import APIView
 
 from users.models import Student
 from .constants import DEFAULT_FIELD_SPECS
-from .models import AdmissionFormTemplate, AdmissionFormSubmission
+from .models import AdmissionFormTemplate, AdmissionFormSubmission, AdmissionPaymentIntent
 from .permissions import IsAdminOrReadOnly
 from .serializers import AdmissionFormSubmissionSerializer, AdmissionFormTemplateSerializer
 from .services import generate_admission_form_pdf, resolve_registration_download_token
@@ -39,6 +39,11 @@ def _append_query_param(url: str, params: dict) -> str:
     query = dict(parse_qsl(parts.query))
     query.update({k: v for k, v in params.items() if v is not None})
     return urlunparse(parts._replace(query=urlencode(query)))
+
+
+def _build_return_url(request, result: str) -> str:
+    base_url = request.build_absolute_uri("/api/admissions/sslcommerz/return/")
+    return _append_query_param(base_url, {"result": result, "source": "admission"})
 
 
 def _validate_submission_payment(submission: AdmissionFormSubmission, val_id: str) -> dict:
@@ -69,6 +74,48 @@ def _validate_submission_payment(submission: AdmissionFormSubmission, val_id: st
         submission.save(update_fields=["status", "paid_at"])
 
     return validation_data
+
+
+def _validate_intent_payment(intent: AdmissionPaymentIntent, val_id: str) -> tuple[dict, AdmissionFormSubmission | None]:
+    validation_params = {
+        "val_id": val_id,
+        "store_id": settings.SSLCOMMERZ_STORE_ID,
+        "store_passwd": settings.SSLCOMMERZ_STORE_PASSWORD,
+        "format": "json",
+    }
+
+    url = f"{_sslcommerz_validation_url()}?{urlencode(validation_params)}"
+    with urlopen(url, timeout=30) as response:
+        validation_raw = response.read().decode("utf-8")
+    validation_data = json.loads(validation_raw)
+
+    intent.gateway_payload = intent.gateway_payload or {}
+    intent.gateway_payload["validation"] = validation_data
+    intent.save(update_fields=["gateway_payload"])
+
+    try:
+        amount = Decimal(str(validation_data.get("amount")))
+    except (InvalidOperation, TypeError):
+        amount = None
+
+    if validation_data.get("status") in ["VALID", "VALIDATED"] and amount == intent.amount:
+        intent.status = "paid"
+        intent.paid_at = timezone.now()
+        intent.save(update_fields=["status", "paid_at"])
+
+        submission, _ = AdmissionFormSubmission.objects.get_or_create(
+            transaction_id=intent.transaction_id,
+            defaults={
+                "template": intent.template,
+                "form_data": intent.form_data,
+                "amount": intent.amount,
+                "status": "paid",
+                "paid_at": intent.paid_at,
+            },
+        )
+        return validation_data, submission
+
+    return validation_data, None
 
 
 class AdmissionFormTemplateViewSet(viewsets.ModelViewSet):
@@ -240,7 +287,7 @@ class AdmissionFormInitView(APIView):
             return Response({"detail": "Admission fee amount is invalid."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         tran_id = f"ADM-{uuid.uuid4().hex[:12].upper()}"
-        submission = AdmissionFormSubmission.objects.create(
+        intent = AdmissionPaymentIntent.objects.create(
             template=template,
             form_data=form_data,
             amount=amount,
@@ -255,9 +302,9 @@ class AdmissionFormInitView(APIView):
             "total_amount": str(amount),
             "currency": settings.SSLCOMMERZ_CURRENCY,
             "tran_id": tran_id,
-            "success_url": _append_query_param(settings.SSLCOMMERZ_SUCCESS_URL, {"source": "admission"}),
-            "fail_url": _append_query_param(settings.SSLCOMMERZ_FAIL_URL, {"source": "admission"}),
-            "cancel_url": _append_query_param(settings.SSLCOMMERZ_CANCEL_URL, {"source": "admission"}),
+            "success_url": _build_return_url(request, "success"),
+            "fail_url": _build_return_url(request, "fail"),
+            "cancel_url": _build_return_url(request, "cancel"),
             "ipn_url": settings.SSLCOMMERZ_ADMISSION_IPN_URL,
             "product_category": "education",
             "product_name": "Admission Form",
@@ -272,7 +319,7 @@ class AdmissionFormInitView(APIView):
             "shipping_method": "NO",
             "num_of_item": 1,
             "weight_of_items": "0.1",
-            "value_a": str(submission.id),
+            "value_a": str(intent.id),
         }
 
         try:
@@ -283,13 +330,13 @@ class AdmissionFormInitView(APIView):
                 raw = response.read().decode("utf-8")
             ssl_response = json.loads(raw)
         except Exception as exc:
-            submission.gateway_payload = {"error": str(exc)}
-            submission.status = "failed"
-            submission.save(update_fields=["gateway_payload", "status"])
+            intent.gateway_payload = {"error": str(exc)}
+            intent.status = "failed"
+            intent.save(update_fields=["gateway_payload", "status"])
             return Response({"status": "fail", "message": "Failed to connect with SSLCOMMERZ"}, status=status.HTTP_502_BAD_GATEWAY)
 
-        submission.gateway_payload = {"init_response": ssl_response}
-        submission.save(update_fields=["gateway_payload"])
+        intent.gateway_payload = {"init_response": ssl_response}
+        intent.save(update_fields=["gateway_payload"])
 
         gateway_url = ssl_response.get("GatewayPageURL")
         if gateway_url:
@@ -297,11 +344,11 @@ class AdmissionFormInitView(APIView):
                 "status": "success",
                 "data": gateway_url,
                 "tran_id": tran_id,
-                "submission_id": submission.id,
+                "intent_id": intent.id,
             })
 
-        submission.status = "failed"
-        submission.save(update_fields=["status"])
+        intent.status = "failed"
+        intent.save(update_fields=["status"])
         return Response({"status": "fail", "message": ssl_response.get("failedreason") or "Gateway error"}, status=status.HTTP_400_BAD_REQUEST)
 
 
@@ -317,31 +364,73 @@ class AdmissionFormIPNView(APIView):
         if not tran_id:
             return Response("Missing transaction ID", status=status.HTTP_400_BAD_REQUEST)
 
-        submission = AdmissionFormSubmission.objects.filter(transaction_id=tran_id).first()
-        if not submission:
-            return Response("Submission not found", status=status.HTTP_404_NOT_FOUND)
+        intent = AdmissionPaymentIntent.objects.filter(transaction_id=tran_id).first()
+        if not intent:
+            return Response("Intent not found", status=status.HTTP_404_NOT_FOUND)
 
-        submission.gateway_payload = submission.gateway_payload or {}
-        submission.gateway_payload["ipn"] = data
-        submission.save(update_fields=["gateway_payload"])
+        intent.gateway_payload = intent.gateway_payload or {}
+        intent.gateway_payload["ipn"] = data
+        intent.save(update_fields=["gateway_payload"])
 
         if status_value not in ["VALID", "VALIDATED"]:
-            submission.status = "failed"
-            submission.save(update_fields=["status"])
+            intent.status = "failed"
+            intent.save(update_fields=["status"])
             return Response("IPN received")
 
         if not val_id:
             return Response("Missing val_id", status=status.HTTP_400_BAD_REQUEST)
 
         try:
-            _validate_submission_payment(submission, val_id)
+            _validate_intent_payment(intent, val_id)
         except Exception as exc:
-            submission.gateway_payload = submission.gateway_payload or {}
-            submission.gateway_payload["validation_error"] = str(exc)
-            submission.save(update_fields=["gateway_payload"])
+            intent.gateway_payload = intent.gateway_payload or {}
+            intent.gateway_payload["validation_error"] = str(exc)
+            intent.save(update_fields=["gateway_payload"])
             return Response("Validation failed", status=status.HTTP_502_BAD_GATEWAY)
 
         return Response("Payment validated")
+
+
+class AdmissionReturnView(APIView):
+    permission_classes = [AllowAny]
+
+    def _handle(self, request):
+        data = request.data if request.method == "POST" else request.query_params
+        tran_id = data.get("tran_id")
+        status_value = data.get("status")
+        val_id = data.get("val_id")
+        intent = AdmissionPaymentIntent.objects.filter(transaction_id=tran_id).first() if tran_id else None
+        result = "failed"
+
+        if status_value in ["VALID", "VALIDATED"] and val_id and intent:
+            try:
+                _, submission = _validate_intent_payment(intent, val_id)
+                if submission and submission.status == "paid":
+                    result = "success"
+            except Exception:
+                result = "failed"
+
+        if intent and result != "success" and intent.status == "pending":
+            intent.status = "failed"
+            intent.save(update_fields=["status"])
+
+        frontend_url = f"{settings.FRONTEND_BASE_URL.rstrip('/')}/admission"
+        redirect_url = _append_query_param(
+            frontend_url,
+            {
+                "payment": result,
+                "source": "admission",
+                "tran_id": tran_id,
+                "val_id": val_id,
+            },
+        )
+        return HttpResponseRedirect(redirect_url)
+
+    def post(self, request, *args, **kwargs):
+        return self._handle(request)
+
+    def get(self, request, *args, **kwargs):
+        return self._handle(request)
 
 
 class AdmissionFormDownloadView(APIView):
@@ -356,7 +445,20 @@ class AdmissionFormDownloadView(APIView):
 
         submission = AdmissionFormSubmission.objects.filter(transaction_id=tran_id).select_related("template").first()
         if not submission:
-            return Response({"detail": "Submission not found."}, status=status.HTTP_404_NOT_FOUND)
+            intent = AdmissionPaymentIntent.objects.filter(transaction_id=tran_id).select_related("template").first()
+            if not intent:
+                return Response({"detail": "Submission not found."}, status=status.HTTP_404_NOT_FOUND)
+            if not val_id:
+                return Response({"detail": "Payment not confirmed yet."}, status=status.HTTP_409_CONFLICT)
+            try:
+                _, submission = _validate_intent_payment(intent, val_id)
+            except Exception as exc:
+                intent.gateway_payload = intent.gateway_payload or {}
+                intent.gateway_payload["validation_error"] = str(exc)
+                intent.save(update_fields=["gateway_payload"])
+                return Response({"detail": "Payment validation failed."}, status=status.HTTP_502_BAD_GATEWAY)
+            if not submission or submission.status != "paid":
+                return Response({"detail": "Payment not completed yet."}, status=status.HTTP_409_CONFLICT)
 
         if submission.status != "paid":
             if not val_id:

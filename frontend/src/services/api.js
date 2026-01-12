@@ -273,6 +273,13 @@ export const examAPI = {
     }),
 };
 
+// Notification APIs
+export const notificationAPI = {
+  getPushConfig: () => api.get('/notifications/push-config/'),
+  registerPushSubscription: (data) => api.post('/notifications/push-subscriptions/', data),
+  unregisterPushSubscription: (data) => api.post('/notifications/push-subscriptions/unregister/', data),
+};
+
 // Teacher Subject Assignment APIs
 export const teacherAssignmentAPI = {
   getAll: (params = {}) => api.get('/academics/teacher-assignments/', { params }),

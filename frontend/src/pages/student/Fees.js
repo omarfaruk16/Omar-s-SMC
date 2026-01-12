@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { feeAPI, paymentAPI } from '../../services/api';
+import { examAPI, feeAPI, paymentAPI } from '../../services/api';
 import { useToast } from '../../context/ToastContext';
 
 const METHODS = [
@@ -16,6 +16,7 @@ const StudentFees = () => {
   const [paying, setPaying] = useState(null);
   const [form, setForm] = useState({ method: 'bkash', number: '', transaction_id: '' });
   const [sslLoading, setSslLoading] = useState(false);
+  const [downloadingAdmit, setDownloadingAdmit] = useState('');
 
   useEffect(() => { load(); }, []);
 
@@ -62,6 +63,32 @@ const StudentFees = () => {
     } catch (e) { console.error(e); toast.error('Failed to submit payment'); }
   };
 
+  const downloadAdmitCard = async (fee) => {
+    if (!fee.exam_title || !fee.class_id) {
+      toast.error('Admit card data is missing.');
+      return;
+    }
+    const key = `${fee.exam_title}-${fee.class_id}`;
+    try {
+      setDownloadingAdmit(key);
+      const response = await examAPI.downloadAdmitCard(fee.exam_title, fee.class_id);
+      const blob = new Blob([response.data], { type: 'application/pdf' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `admit-card-${fee.exam_title.replace(/\\s+/g, '_')}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Failed to download admit card', error);
+      toast.error('Unable to download admit card right now.');
+    } finally {
+      setDownloadingAdmit('');
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 py-8 flex items-center justify-center">
@@ -100,7 +127,16 @@ const StudentFees = () => {
                       <td className="px-6 py-4 whitespace-nowrap text-sm">{f.fee_status}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm">{f.payment_status}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm">
-                        {f.payment_status === 'not_paid' && f.fee_status === 'running' ? (
+                        {f.fee_type === 'exam' && f.payment_status === 'approved' ? (
+                          <button
+                            type="button"
+                            onClick={() => downloadAdmitCard(f)}
+                            disabled={downloadingAdmit === `${f.exam_title}-${f.class_id}`}
+                            className="px-3 py-1 bg-green-600 text-white rounded disabled:opacity-60"
+                          >
+                            {downloadingAdmit === `${f.exam_title}-${f.class_id}` ? 'Preparing...' : 'Download Admit Card'}
+                          </button>
+                        ) : f.payment_status === 'not_paid' && f.fee_status === 'running' ? (
                           <button onClick={()=>openPay(f)} className="px-3 py-1 bg-blue-600 text-white rounded">Pay Now</button>
                         ) : (
                           <span className="text-gray-500">—</span>

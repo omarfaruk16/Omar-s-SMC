@@ -6,11 +6,12 @@ class FeeSerializer(serializers.ModelSerializer):
     """Serializer for Fee model"""
     class_name = serializers.SerializerMethodField()
     payment_count = serializers.SerializerMethodField()
+    exam_title = serializers.SerializerMethodField()
     
     class Meta:
         model = Fee
         fields = ['id', 'title', 'class_assigned', 'class_name', 'amount', 
-                  'month', 'status', 'created_date', 'payment_count']
+                  'month', 'status', 'fee_type', 'exam', 'exam_title', 'created_date', 'payment_count']
         read_only_fields = ['id', 'created_date', 'class_name', 'payment_count']
     
     def get_class_name(self, obj):
@@ -18,6 +19,13 @@ class FeeSerializer(serializers.ModelSerializer):
     
     def get_payment_count(self, obj):
         return obj.payments.filter(status='approved').count()
+
+    def get_exam_title(self, obj):
+        if obj.exam:
+            return obj.exam.title
+        if obj.fee_type == 'exam' and obj.title:
+            return obj.title.replace(' Exam Fee', '')
+        return None
 
 
 class PaymentSerializer(serializers.ModelSerializer):
@@ -81,6 +89,9 @@ class FeeStudentSerializer(serializers.Serializer):
     month = serializers.CharField()
     amount = serializers.DecimalField(max_digits=10, decimal_places=2)
     fee_status = serializers.CharField()
+    fee_type = serializers.CharField()
+    class_id = serializers.IntegerField()
+    exam_title = serializers.CharField(allow_null=True)
     payment_status = serializers.CharField()
     payment_id = serializers.IntegerField(allow_null=True)
     payment_method = serializers.CharField(allow_null=True)

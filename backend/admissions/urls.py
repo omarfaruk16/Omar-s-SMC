@@ -5,6 +5,7 @@ from .views import (
     AdmissionFormDownloadView,
     AdmissionFormIPNView,
     AdmissionFormInitView,
+    AdmissionReturnView,
     AdmissionFormSubmissionViewSet,
     AdmissionFormTemplateViewSet,
     RegistrationAdmissionFormDownloadView,
@@ -23,5 +24,6 @@ urlpatterns = [
     ),
     path("sslcommerz/init/", AdmissionFormInitView.as_view(), name="admission-sslcommerz-init"),
     path("sslcommerz/ipn/", AdmissionFormIPNView.as_view(), name="admission-sslcommerz-ipn"),
+    path("sslcommerz/return/", AdmissionReturnView.as_view(), name="admission-sslcommerz-return"),
     path("submissions/download/", AdmissionFormDownloadView.as_view(), name="admission-submission-download"),
 ]

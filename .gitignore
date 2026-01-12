@@ -1,3 +1,10 @@
 venv/
 .venv/
 backend/venv/
+# Python cache artifacts
+__pycache__/
+*.pyc
+# Keep .env files tracked in this repo
+!.env
+!backend/.env
+!frontend/.env

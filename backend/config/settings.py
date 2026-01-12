@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     "fees",
     "admissions",
     "transcripts",
+    "notifications",
 ]
 
 MIDDLEWARE = [
@@ -178,6 +179,9 @@ CORS_ALLOWED_ORIGINS = config(
 
 CORS_ALLOW_CREDENTIALS = True
 
+# Frontend Base URL (for payment redirects)
+FRONTEND_BASE_URL = config('FRONTEND_BASE_URL', default='http://localhost:3000')
+
 # Email Configuration
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = config('EMAIL_HOST', default='smtp.gmail.com')
@@ -215,3 +219,8 @@ SSLCOMMERZ_ADMISSION_IPN_URL = config('SSLCOMMERZ_ADMISSION_IPN_URL', default='h
 SSLCOMMERZ_CURRENCY = config('SSLCOMMERZ_CURRENCY', default='BDT')
 ADMISSION_FORM_FEE_AMOUNT = config('ADMISSION_FORM_FEE_AMOUNT', default=3500, cast=int)
 TRANSCRIPT_FEE_AMOUNT = config('TRANSCRIPT_FEE_AMOUNT', default=3500, cast=int)
+
+# Web Push Configuration
+WEBPUSH_PUBLIC_KEY = config('WEBPUSH_PUBLIC_KEY', default='')
+WEBPUSH_PRIVATE_KEY = config('WEBPUSH_PRIVATE_KEY', default='')
+WEBPUSH_SUBJECT = config('WEBPUSH_SUBJECT', default='mailto:admin@example.com')

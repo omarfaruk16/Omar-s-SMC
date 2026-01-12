@@ -1,12 +1,20 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { useToast } from '../../context/ToastContext';
 import Calendar from '../../components/Calendar';
 import Modal from '../../components/Modal';
-import { timetableAPI, teacherAssignmentAPI, attendanceAPI, studentAPI } from '../../services/api';
+import { notificationAPI, timetableAPI, teacherAssignmentAPI, attendanceAPI, studentAPI } from '../../services/api';
+import {
+  getActiveSubscription,
+  getOrCreateSubscription,
+  getPushPermission,
+  isPushSupported,
+} from '../../utils/pushNotifications';
 
 const TeacherDashboard = () => {
   const { user } = useAuth();
+  const toast = useToast();
 
   const menuItems = [
     { title: 'Quick Attendance', path: '/teacher/attendance', icon: '✅', description: 'Tap to take attendance', color: 'from-emerald-500 to-teal-600' },
@@ -23,6 +31,9 @@ const TeacherDashboard = () => {
   const [slots, setSlots] = useState([]);
   const [modalOpen, setModalOpen] = useState(false);
   const [modalDate, setModalDate] = useState(null);
+  const [pushStatus, setPushStatus] = useState(getPushPermission());
+  const [pushLoading, setPushLoading] = useState(false);
+  const pushSupported = isPushSupported();
   const [stats, setStats] = useState({
     mySubjects: 0,
     myClasses: 0,
@@ -81,6 +92,64 @@ const TeacherDashboard = () => {
     })();
   }, [year, month, user]);
 
+  useEffect(() => {
+    if (!pushSupported) return;
+    setPushStatus(getPushPermission());
+  }, [pushSupported]);
+
+  const enableNotifications = async () => {
+    if (!pushSupported || pushLoading) return;
+    setPushLoading(true);
+    try {
+      const permission = await Notification.requestPermission();
+      setPushStatus(permission);
+      if (permission !== 'granted') {
+        toast.error('Notifications were not enabled.');
+        return;
+      }
+      const config = await notificationAPI.getPushConfig();
+      const publicKey = config.data?.publicKey;
+      if (!publicKey) {
+        toast.error('Push configuration is missing.');
+        return;
+      }
+      const subscription = await getOrCreateSubscription(publicKey);
+      if (!subscription) {
+        toast.error('Unable to create a push subscription.');
+        return;
+      }
+      await notificationAPI.registerPushSubscription({
+        endpoint: subscription.endpoint,
+        keys: subscription.toJSON().keys,
+        user_agent: navigator.userAgent,
+      });
+      toast.success('Class reminders enabled.');
+    } catch (error) {
+      console.error(error);
+      toast.error('Failed to enable notifications.');
+    } finally {
+      setPushLoading(false);
+    }
+  };
+
+  const disableNotifications = async () => {
+    if (!pushSupported || pushLoading) return;
+    setPushLoading(true);
+    try {
+      const subscription = await getActiveSubscription();
+      if (subscription) {
+        await notificationAPI.unregisterPushSubscription({ endpoint: subscription.endpoint });
+        await subscription.unsubscribe();
+      }
+      toast.success('Class reminders disabled.');
+    } catch (error) {
+      console.error(error);
+      toast.error('Failed to disable notifications.');
+    } finally {
+      setPushLoading(false);
+    }
+  };
+
   // compute next 5 upcoming classes from weekly slots
   const upcoming = useMemo(() => {
     const nowDt = new Date();
@@ -111,6 +180,44 @@ const TeacherDashboard = () => {
         <div className="mb-8">
           <h1 className="text-4xl font-bold text-gray-900 mb-2">Teacher Dashboard</h1>
           <p className="text-gray-600">Welcome back, {user?.first_name}! Here's your overview</p>
+        </div>
+
+        <div className="mb-8">
+          <div className="bg-white rounded-xl shadow-md p-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div>
+              <h2 className="text-lg font-semibold text-gray-900">Class Reminder Notifications</h2>
+              <p className="text-sm text-gray-600">
+                Get a browser reminder 15 minutes before each of your scheduled classes.
+              </p>
+              {!pushSupported && (
+                <p className="text-xs text-red-500 mt-1">Push notifications are not supported in this browser.</p>
+              )}
+              {pushSupported && pushStatus === 'denied' && (
+                <p className="text-xs text-red-500 mt-1">Notifications are blocked in your browser settings.</p>
+              )}
+            </div>
+            <div className="flex items-center gap-3">
+              {pushSupported && pushStatus === 'granted' ? (
+                <button
+                  type="button"
+                  onClick={disableNotifications}
+                  disabled={pushLoading}
+                  className="px-4 py-2 rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200 disabled:opacity-60"
+                >
+                  {pushLoading ? 'Updating...' : 'Disable'}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={enableNotifications}
+                  disabled={!pushSupported || pushLoading}
+                  className="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-60"
+                >
+                  {pushLoading ? 'Enabling...' : 'Enable'}
+                </button>
+              )}
+            </div>
+          </div>
         </div>
 
         {/* Stats Cards */}

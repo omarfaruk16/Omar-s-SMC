@@ -35,6 +35,8 @@ def generate_exam_admit_card_pdf(student, exam_title: str, exams: Iterable) -> T
     template = AdmissionFormTemplate.get_default()
     school_name = template.school_name if template else "School"
     school_address = template.school_address if template else ""
+    school_slogan = template.slogan if template else ""
+    eiin_number = template.eiin_number if template else ""
     logo_path = template.logo.path if template and template.logo else None
     header_bg_color = template.header_background_color if template else "#1f2937"
     header_text_color = template.header_text_color if template else "#ffffff"
@@ -53,6 +55,16 @@ def generate_exam_admit_card_pdf(student, exam_title: str, exams: Iterable) -> T
     top_margin = 20 * mm
     content_width = width - left_margin - right_margin
 
+    # Watermark
+    if exam_title:
+        pdf.saveState()
+        pdf.translate(width / 2, height / 2)
+        pdf.rotate(35)
+        pdf.setFillColor(colors.HexColor("#e5e7eb"))
+        pdf.setFont(header_font, 40)
+        pdf.drawCentredString(0, 0, exam_title.upper())
+        pdf.restoreState()
+
     # Header
     pdf.setFillColor(colors.HexColor(header_bg_color))
     pdf.rect(0, height - 40 * mm, width, 40 * mm, fill=1, stroke=0)
@@ -68,9 +80,13 @@ def generate_exam_admit_card_pdf(student, exam_title: str, exams: Iterable) -> T
     pdf.setFillColor(colors.HexColor(header_text_color))
     pdf.setFont(header_font, 18)
     pdf.drawString(text_x, height - 18 * mm, school_name)
+    pdf.setFont(body_font, 10)
+    if school_slogan:
+        pdf.drawString(text_x, height - 26 * mm, school_slogan)
     if school_address:
-        pdf.setFont(body_font, 10)
-        pdf.drawString(text_x, height - 26 * mm, school_address)
+        pdf.drawString(text_x, height - 31 * mm, school_address)
+    if eiin_number:
+        pdf.drawString(text_x, height - 36 * mm, f"EIIN: {eiin_number}")
 
     pdf.setFillColor(colors.HexColor(primary_color))
     pdf.setFont(header_font, 16)
@@ -84,10 +100,12 @@ def generate_exam_admit_card_pdf(student, exam_title: str, exams: Iterable) -> T
     pdf.drawString(left_margin, info_y - line_gap, f"Student: {student.user.get_full_name()}")
     pdf.drawString(left_margin, info_y - 2 * line_gap, f"Class: {student.student_class or '-'}")
     pdf.drawString(left_margin, info_y - 3 * line_gap, f"Roll: {roll}")
-    pdf.drawString(left_margin, info_y - 4 * line_gap, f"Issue Date: {timezone.localdate().isoformat()}")
+    guardian = student.guardian_name or "-"
+    pdf.drawString(left_margin, info_y - 4 * line_gap, f"Guardian: {guardian}")
+    pdf.drawString(left_margin, info_y - 5 * line_gap, f"Issue Date: {timezone.localdate().isoformat()}")
 
     # Table header
-    table_top = info_y - 6 * line_gap
+    table_top = info_y - 7 * line_gap
     pdf.setFillColor(colors.HexColor(primary_color))
     pdf.rect(left_margin, table_top, content_width, 8 * mm, fill=1, stroke=0)
     pdf.setFillColor(colors.white)
