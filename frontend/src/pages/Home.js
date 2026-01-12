@@ -7,6 +7,16 @@ import { useAuth } from "../context/AuthContext";
 const slides = [
   "./assets/images/College_pic.jpg",
   "./assets/images/MAIN_FATOK.jpg",
+  "./new-slider-image-1.png",
+  "./new-slider-image-2.png",
+  "./new-slider-image-3.png",
+  "./new-slider-image-4.png",
+  "./new-slider-image-5.png",
+  "./new-slider-image-6.png",
+  "./new-slider-image-7.png",
+  "./new-slider-image-8.png",
+  "./new-slider-image-9.png",
+  "./new-slider-image-10.png",
 ];
 
 const Home = () => {

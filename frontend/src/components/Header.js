@@ -83,7 +83,7 @@ const Header = () => {
             <Link to="/" className="flex items-center space-x-3 mb-2 md:mb-0">
               <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center">
                 <img 
-                  src="/assets/images/logo.png" 
+                  src="/rozey-mozammel-womens-college-logo.png" 
                   alt="School Logo" 
                   className="w-10 h-10 object-contain"
                   onError={(e) => {
