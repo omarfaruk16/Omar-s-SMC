@@ -13,7 +13,7 @@ const Footer = () => {
             <div className="flex items-center space-x-3 mb-4">
               <div className="w-[120px] h-auto bg-white rounded-full flex items-center justify-center p-2">
                 <img 
-                  src="/assets/images/logo.png" 
+                  src="/rozey-mozammel-womens-college-logo.png" 
                   alt="School Logo" 
                   className="w-full h-full object-contain"
                   onError={(e) => {
