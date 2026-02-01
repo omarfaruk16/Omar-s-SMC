@@ -16,6 +16,7 @@ SECRET_KEY = config('SECRET_KEY', default="django-insecure-@a1%oy8d4mf+1id_4j+17
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = config('DEBUG', default=True, cast=bool)
+SERVE_MEDIA = config('SERVE_MEDIA', default=True, cast=bool)
 
 ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost,127.0.0.1').split(',')
 
@@ -81,15 +82,25 @@ WSGI_APPLICATION = "config.wsgi.application"
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
-# Use PostgreSQL in production, SQLite in development
-if config('DATABASE_URL', default=None):
+# Get the environment mode (development or production)
+DATABASE_MODE = config('MODE', default='development')
+
+# Configure database based on the mode
+if DATABASE_MODE == 'production':
+    # PostgreSQL for production
     DATABASES = {
-        'default': dj_database_url.config(
-            default=config('DATABASE_URL'),
-            conn_max_age=600
-        )
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': config('DB_NAME', default='smsp'),
+            'USER': config('DB_USER', default='omar'),
+            'PASSWORD': config('DB_PASSWORD', default='omarsstrongpassword123'),
+            'HOST': config('DB_HOST', default='localhost'),
+            'PORT': config('DB_PORT', default='5432'),
+            'CONN_MAX_AGE': 600,
+        }
     }
 else:
+    # SQLite for development
     DATABASES = {
         "default": {
             "ENGINE": "django.db.backends.sqlite3",
@@ -219,10 +230,12 @@ SSLCOMMERZ_FAIL_URL = config('SSLCOMMERZ_FAIL_URL', default='http://localhost:30
 SSLCOMMERZ_CANCEL_URL = config('SSLCOMMERZ_CANCEL_URL', default='http://localhost:3000/payment/cancel')
 SSLCOMMERZ_IPN_URL = config('SSLCOMMERZ_IPN_URL', default='http://localhost:8000/api/payments/sslcommerz/ipn/')
 SSLCOMMERZ_TRANSCRIPT_IPN_URL = config('SSLCOMMERZ_TRANSCRIPT_IPN_URL', default='http://localhost:8000/api/transcripts/sslcommerz/ipn/')
+SSLCOMMERZ_TESTIMONIAL_IPN_URL = config('SSLCOMMERZ_TESTIMONIAL_IPN_URL', default='http://localhost:8000/api/testimonials/sslcommerz/ipn/')
 SSLCOMMERZ_ADMISSION_IPN_URL = config('SSLCOMMERZ_ADMISSION_IPN_URL', default='http://localhost:8000/api/admissions/sslcommerz/ipn/')
 SSLCOMMERZ_CURRENCY = config('SSLCOMMERZ_CURRENCY', default='BDT')
 ADMISSION_FORM_FEE_AMOUNT = config('ADMISSION_FORM_FEE_AMOUNT', default=3500, cast=int)
 TRANSCRIPT_FEE_AMOUNT = config('TRANSCRIPT_FEE_AMOUNT', default=3500, cast=int)
+TESTIMONIAL_FEE_AMOUNT = config('TESTIMONIAL_FEE_AMOUNT', default=TRANSCRIPT_FEE_AMOUNT, cast=int)
 
 # Web Push Configuration
 WEBPUSH_PUBLIC_KEY = config('WEBPUSH_PUBLIC_KEY', default='')

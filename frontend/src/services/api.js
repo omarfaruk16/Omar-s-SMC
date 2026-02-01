@@ -52,11 +52,16 @@ api.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
 
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    const requestUrl = originalRequest?.url || '';
+    const isAuthRequest = requestUrl.includes('/auth/login/') || requestUrl.includes('/auth/refresh/');
+    if (error.response?.status === 401 && !originalRequest._retry && !isAuthRequest) {
       originalRequest._retry = true;
 
       try {
         const refreshToken = localStorage.getItem('refresh_token');
+        if (!refreshToken) {
+          return Promise.reject(error);
+        }
         const response = await axios.post(`${API_BASE_URL}/auth/refresh/`, {
           refresh: refreshToken,
         });
@@ -70,7 +75,9 @@ api.interceptors.response.use(
         localStorage.removeItem('access_token');
         localStorage.removeItem('refresh_token');
         localStorage.removeItem('user');
-        window.location.href = '/login';
+        if (!isAuthRequest) {
+          window.location.href = '/login';
+        }
         return Promise.reject(refreshError);
       }
     }
@@ -118,6 +125,7 @@ export const authAPI = {
 export const classAPI = {
   getAll: () => api.get('/classes/'),
   getOne: (id) => api.get(`/classes/${id}/`),
+  getById: (id) => api.get(`/classes/${id}/`),
   create: (data) => api.post('/classes/', data),
   update: (id, data) => api.put(`/classes/${id}/`, data),
   delete: (id) => api.delete(`/classes/${id}/`),
@@ -163,6 +171,7 @@ export const admissionAPI = {
   getAvailableFields: () => api.get('/admissions/templates/available-fields/'),
   downloadStudentForm: (slug, studentId) => api.get(`/admissions/templates/${slug}/students/${studentId}/filled/`, { responseType: 'blob' }),
   initAdmissionPayment: (data) => api.post('/admissions/sslcommerz/init/', data),
+  getStudentInfo: () => api.get('/admissions/student-info/'),
   downloadSubmission: (params = {}) => api.get('/admissions/submissions/download/', { params, responseType: 'blob' }),
   getSubmissions: () => api.get('/admissions/submissions/'),
   downloadSubmissionById: (id) => api.get(`/admissions/submissions/${id}/download/`, { responseType: 'blob' }),
@@ -171,24 +180,32 @@ export const admissionAPI = {
 // Teachers APIs
 export const teacherAPI = {
   getAll: () => api.get('/users/teachers/'),
+  getById: (id) => api.get(`/users/teachers/${id}/`),
   getPending: () => api.get('/users/teachers/pending/'),
   approve: (id) => api.post(`/users/teachers/${id}/approve/`),
   reject: (id) => api.post(`/users/teachers/${id}/reject/`),
   assignClasses: (id, class_ids) =>
     api.post(`/users/teachers/${id}/assign_classes/`, { class_ids }),
+  update: (id, data) => api.patch(`/users/teachers/${id}/`, data),
   delete: (id) => api.delete(`/users/teachers/${id}/`),
+  toggleStatus: (id, status) => api.post(`/users/teachers/${id}/toggle_status/`, { status }),
 };
 
 // Students APIs
 export const studentAPI = {
   getAll: () => api.get('/users/students/'),
+  getById: (id) => api.get(`/users/students/${id}/`),
   getPending: () => api.get('/users/students/pending/'),
   approve: (id) => api.post(`/users/students/${id}/approve/`),
   reject: (id) => api.post(`/users/students/${id}/reject/`),
+  suspend: (id) => api.post(`/users/students/${id}/suspend/`),
   changeClass: (id, class_id) =>
     api.post(`/users/students/${id}/change_class/`, { class_id }),
+  updateRoll: (id, roll_number) => api.patch(`/users/students/${id}/update_roll/`, { roll_number }),
+  update: (id, data) => api.put(`/users/students/${id}/`, data),
   delete: (id) => api.delete(`/users/students/${id}/`),
   getByClass: (class_id) => api.get('/users/students/by_class/', { params: { class_id } }),
+  toggleStatus: (id, status) => api.post(`/users/students/${id}/toggle_status/`, { status }),
 };
 
 // Fees APIs
@@ -221,6 +238,7 @@ export const publicAPI = {
 // Subjects APIs
 export const subjectAPI = {
   getAll: () => api.get('/academics/subjects/'),
+  getById: (id) => api.get(`/academics/subjects/${id}/`),
   create: (data) => api.post('/academics/subjects/', data),
   update: (id, data) => api.put(`/academics/subjects/${id}/`, data),
   delete: (id) => api.delete(`/academics/subjects/${id}/`),
@@ -232,12 +250,14 @@ export const attendanceAPI = {
   mark: (class_id, date, present_ids, subject_id) => api.post('/academics/attendance/mark/', { class_id, date, present_ids, subject_id }),
 };
 
-// Transcript APIs
-export const transcriptAPI = {
-  getAll: () => api.get('/transcripts/'),
-  initSslcommerz: (data = {}) => api.post('/transcripts/sslcommerz/init/', data),
-  approve: (id, notes = '') => api.post(`/transcripts/${id}/approve/`, { notes }),
-  reject: (id, notes = '') => api.post(`/transcripts/${id}/reject/`, { notes }),
+// Testimonial APIs
+export const testimonialAPI = {
+  getAll: () => api.get('/testimonials/'),
+  initSslcommerz: (data = {}) => api.post('/testimonials/sslcommerz/init/', data),
+  download: (id) => api.get(`/testimonials/${id}/download/`, { responseType: 'blob' }),
+  approve: (id, data) => api.post(`/testimonials/${id}/approve/`, data),
+  reject: (id, data) => api.post(`/testimonials/${id}/reject/`, data),
+  delete: (id) => api.delete(`/testimonials/${id}/`),
 };
 
 // Timetable APIs
@@ -256,6 +276,7 @@ export const markAPI = {
   update: (id, data) => api.put(`/academics/marks/${id}/`, data),
   delete: (id) => api.delete(`/academics/marks/${id}/`),
   publish: (id) => api.post(`/academics/marks/${id}/publish/`),
+  downloadMarksheet: (params = {}) => api.get('/academics/marks/marksheet/', { params, responseType: 'blob' }),
 };
 
 // Exams APIs
@@ -265,12 +286,13 @@ export const examAPI = {
   update: (id, data) => api.put(`/academics/exams/${id}/`, data),
   delete: (id) => api.delete(`/academics/exams/${id}/`),
   publish: (id) => api.post(`/academics/exams/${id}/publish/`),
-  unpublish: (id) => api.post(`/academics/exams/${id}/unpublish/`),
-  downloadAdmitCard: (exam_title, class_id) =>
-    api.get('/academics/exams/admit-card/', {
-      params: { exam_title, class_id },
+  publishResult: (id) => api.post(`/academics/exams/${id}/publish_result/`),
+  downloadAdmitCard: (id) =>
+    api.get(`/academics/exams/${id}/download_admit_card/`, {
       responseType: 'blob',
     }),
+  downloadRoutine: (id) =>
+    api.get(`/academics/exams/${id}/download_routine/`, { responseType: 'blob' }),
 };
 
 // Notification APIs
@@ -278,6 +300,13 @@ export const notificationAPI = {
   getPushConfig: () => api.get('/notifications/push-config/'),
   registerPushSubscription: (data) => api.post('/notifications/push-subscriptions/', data),
   unregisterPushSubscription: (data) => api.post('/notifications/push-subscriptions/unregister/', data),
+};
+
+// Result Submission APIs
+export const resultSubmissionAPI = {
+  getAll: (params = {}) => api.get('/academics/results/', { params }),
+  submit: (data) => api.post('/academics/results/submit/', data),
+  publish: (id) => api.post(`/academics/results/${id}/publish/`),
 };
 
 // Teacher Subject Assignment APIs

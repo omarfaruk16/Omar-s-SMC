@@ -15,6 +15,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from users.models import Student
+from academics.models import Subject
 from .constants import DEFAULT_FIELD_SPECS
 from .models import AdmissionFormTemplate, AdmissionFormSubmission, AdmissionPaymentIntent
 from .permissions import IsAdminOrReadOnly
@@ -224,6 +225,44 @@ class AdmissionFormSubmissionViewSet(viewsets.ReadOnlyModelViewSet):
         return response
 
 
+class AdmissionStudentInfoView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        if not request.user.is_authenticated or request.user.role != "student":
+            return Response({"detail": "Student access required."}, status=status.HTTP_403_FORBIDDEN)
+
+        try:
+            student = request.user.student_profile
+        except Exception as e:
+            return Response({"detail": "Student profile not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        try:
+            # Handle case where student class might be None
+            subjects = []
+            if student.student_class:
+                subjects = Subject.objects.filter(class_assigned=student.student_class).order_by("name")
+            
+            return Response({
+                "student": {
+                    "id": student.id,
+                    "first_name": student.user.first_name,
+                    "last_name": student.user.last_name,
+                    "email": student.user.email,
+                    "phone": student.user.phone or "",
+                    "date_of_birth": student.date_of_birth,
+                    "roll_number": student.roll_number or "",
+                    "student_class": str(student.student_class) if student.student_class else "",
+                    "address": student.address or "",
+                    "guardian_name": student.guardian_name or "",
+                    "guardian_phone": student.guardian_phone or "",
+                },
+                "subjects": list(subjects.values("id", "name", "code")),
+            })
+        except Exception as e:
+            return Response({"detail": f"Error loading data: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
 class RegistrationAdmissionFormDownloadView(APIView):
     """Provide a one-time download link for newly registered students."""
 
@@ -258,9 +297,43 @@ class RegistrationAdmissionFormDownloadView(APIView):
 
 
 class AdmissionFormInitView(APIView):
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
 
     def post(self, request):
+        if not request.user.is_authenticated or request.user.role != "student":
+            return Response({"detail": "Student access required."}, status=status.HTTP_403_FORBIDDEN)
+
+        try:
+            student = request.user.student_profile
+        except Exception:
+            return Response({"detail": "Student profile not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        subject_selection = request.data.get("subject_selection") or request.data.get("selection_type")
+        selected_subjects = request.data.get("selected_subjects") or []
+        if not subject_selection:
+            return Response({"detail": "subject_selection is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        subject_selection = subject_selection.lower()
+        selection_map = {
+            "all": 3600,
+            "one": 1200,
+            "two": 1700,
+            "three": 2000,
+        }
+        if subject_selection not in selection_map:
+            return Response({"detail": "Invalid subject_selection."}, status=status.HTTP_400_BAD_REQUEST)
+
+        class_subjects = Subject.objects.filter(classes=student.student_class).order_by("name")
+        class_subject_ids = set(class_subjects.values_list("id", flat=True))
+
+        if subject_selection == "all":
+            selected_subjects = list(class_subject_ids)
+        else:
+            expected_count = {"one": 1, "two": 2, "three": 3}[subject_selection]
+            if not isinstance(selected_subjects, list) or len(selected_subjects) != expected_count:
+                return Response({"detail": f"Please select {expected_count} subject(s)."}, status=status.HTTP_400_BAD_REQUEST)
+            if any(int(sid) not in class_subject_ids for sid in selected_subjects):
+                return Response({"detail": "Selected subjects are invalid."}, status=status.HTTP_400_BAD_REQUEST)
         template_slug = request.data.get("template_slug")
         if template_slug:
             template = get_object_or_404(AdmissionFormTemplate, slug=template_slug)
@@ -269,20 +342,31 @@ class AdmissionFormInitView(APIView):
         if not template:
             return Response({"detail": "No admission form template configured."}, status=status.HTTP_404_NOT_FOUND)
 
-        form_data = request.data.get("form_data")
-        if isinstance(form_data, str):
-            try:
-                form_data = json.loads(form_data)
-            except json.JSONDecodeError:
-                form_data = None
-        if not isinstance(form_data, dict):
-            return Response({"detail": "form_data is required."}, status=status.HTTP_400_BAD_REQUEST)
+        selected_subjects = [int(sid) for sid in selected_subjects]
+        selected_subject_details = list(
+            class_subjects.filter(id__in=selected_subjects).values("id", "name", "code")
+        )
+
+        form_data = {
+            "first_name": student.user.first_name or "",
+            "last_name": student.user.last_name or "",
+            "email": student.user.email or "",
+            "phone": student.user.phone or "",
+            "date_of_birth": student.date_of_birth.isoformat() if student.date_of_birth else "",
+            "student_class": str(student.student_class) if student.student_class else "",
+            "roll_number": student.roll_number or "",
+            "address": student.address or "",
+            "guardian_name": student.guardian_name or "",
+            "guardian_phone": student.guardian_phone or "",
+            "subject_selection": subject_selection,
+            "selected_subjects": selected_subject_details,
+        }
 
         if not settings.SSLCOMMERZ_STORE_ID or not settings.SSLCOMMERZ_STORE_PASSWORD:
             return Response({"detail": "Payment gateway not configured."}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
 
         try:
-            amount = Decimal(str(settings.ADMISSION_FORM_FEE_AMOUNT))
+            amount = Decimal(str(selection_map[subject_selection]))
         except (InvalidOperation, TypeError):
             return Response({"detail": "Admission fee amount is invalid."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
@@ -295,7 +379,7 @@ class AdmissionFormInitView(APIView):
             status="pending",
         )
 
-        customer_name = f"{form_data.get('first_name', '')} {form_data.get('last_name', '')}".strip() or "Admission Applicant"
+        customer_name = f"{form_data.get('first_name', '')} {form_data.get('last_name', '')}".strip() or "Student"
         post_data = {
             "store_id": settings.SSLCOMMERZ_STORE_ID,
             "store_passwd": settings.SSLCOMMERZ_STORE_PASSWORD,

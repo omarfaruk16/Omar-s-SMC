@@ -1,10 +1,13 @@
+export { default } from './AdmissionFormStudent';
+
+/* Legacy admission form (deprecated)
 import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { admissionAPI, classAPI } from '../services/api';
 import { useToast } from '../context/ToastContext';
 import Modal from '../components/Modal';
 
-const AdmissionForm = () => {
+const LegacyAdmissionForm = () => {
   const toast = useToast();
   const location = useLocation();
   const navigate = useNavigate();
@@ -56,6 +59,88 @@ const AdmissionForm = () => {
 
     loadTemplate();
   }, [toast]);
+
+  const getFieldOptions = (fieldName) => {
+    const optionsMap = {
+      gender: ['Male', 'Female', 'Other'],
+      religion: ['Islam', 'Hinduism', 'Buddhism', 'Christianity', 'Other'],
+      blood_group: ['A+', 'A-', 'B+', 'B-', 'O+', 'O-', 'AB+', 'AB-'],
+      ssc_group: ['Science', 'Humanities', 'Business Studies'],
+    };
+    return optionsMap[fieldName] || [];
+  };
+
+  const renderField = (field, isClassField, isDateField, isSubmissionDate, isMultiline, value, isRequired) => {
+    const fieldOptions = getFieldOptions(field.name);
+    
+    if (isClassField) {
+      return (
+        <select
+          value={value}
+          onChange={(e) => handleChange(field.name, e.target.value)}
+          className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          required={isRequired}
+        >
+          <option value="">Select class</option>
+          {classes.length === 0 ? (
+            <option value="" disabled>No classes available</option>
+          ) : (
+            classes.map((classItem) => {
+              const label = classItem.section
+                ? `${classItem.name} - ${classItem.section}`
+                : classItem.name;
+              return (
+                <option key={classItem.id} value={label}>
+                  {label}
+                </option>
+              );
+            })
+          )}
+        </select>
+      );
+    }
+    
+    if (fieldOptions.length > 0) {
+      return (
+        <select
+          value={value}
+          onChange={(e) => handleChange(field.name, e.target.value)}
+          className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          required={isRequired}
+        >
+          <option value="">Select {field.label.toLowerCase()}</option>
+          {fieldOptions.map((option) => (
+            <option key={option} value={option}>
+              {option}
+            </option>
+          ))}
+        </select>
+      );
+    }
+    
+    if (isMultiline) {
+      return (
+        <textarea
+          value={value}
+          onChange={(e) => handleChange(field.name, e.target.value)}
+          rows={3}
+          className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          required={isRequired}
+        />
+      );
+    }
+    
+    return (
+      <input
+        type={isDateField ? 'date' : isMultiline ? 'text' : 'text'}
+        value={value}
+        onChange={(e) => handleChange(field.name, e.target.value)}
+        className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+        required={isRequired}
+        readOnly={isSubmissionDate}
+      />
+    );
+  };
 
   const fields = useMemo(() => template?.field_definitions || [], [template]);
 
@@ -165,10 +250,10 @@ const AdmissionForm = () => {
 
             <form onSubmit={submitPayment} className="space-y-5">
               {fields.map((field) => {
-                const isMultiline = field.multiline || field.name === 'address';
+                const isMultiline = field.multiline || field.name === 'address' || field.name === 'permanent_address';
                 const value = formData[field.name] ?? '';
                 const isClassField = field.name === 'student_class';
-                const isDateField = field.name === 'date_of_birth';
+                const isDateField = field.name === 'date_of_birth' || field.name === 'submission_date';
                 const isSubmissionDate = field.name === 'submission_date';
                 const hasRequiredFlag = Object.prototype.hasOwnProperty.call(field, 'required') ||
                   Object.prototype.hasOwnProperty.call(field, 'is_required');
@@ -182,47 +267,7 @@ const AdmissionForm = () => {
                       {field.label}
                       {isRequired && <span className="text-red-500 ml-1">*</span>}
                     </label>
-                    {isClassField ? (
-                      <select
-                        value={value}
-                        onChange={(e) => handleChange(field.name, e.target.value)}
-                        className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        required={isRequired}
-                      >
-                        <option value="">Select class</option>
-                        {classes.length === 0 ? (
-                          <option value="" disabled>No classes available</option>
-                        ) : (
-                          classes.map((classItem) => {
-                            const label = classItem.section
-                              ? `${classItem.name} - ${classItem.section}`
-                              : classItem.name;
-                            return (
-                              <option key={classItem.id} value={label}>
-                                {label}
-                              </option>
-                            );
-                          })
-                        )}
-                      </select>
-                    ) : isMultiline ? (
-                      <textarea
-                        value={value}
-                        onChange={(e) => handleChange(field.name, e.target.value)}
-                        rows={3}
-                        className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        required={isRequired}
-                      />
-                    ) : (
-                      <input
-                        type={isDateField ? 'date' : 'text'}
-                        value={value}
-                        onChange={(e) => handleChange(field.name, e.target.value)}
-                        className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        required={isRequired}
-                        readOnly={isSubmissionDate}
-                      />
-                    )}
+                    {renderField(field, isClassField, isDateField, isSubmissionDate, isMultiline, value, isRequired)}
                   </div>
                 );
               })}
@@ -279,4 +324,4 @@ const AdmissionForm = () => {
   );
 };
 
-export default AdmissionForm;
+*/

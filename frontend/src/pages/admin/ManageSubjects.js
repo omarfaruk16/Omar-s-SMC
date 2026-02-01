@@ -9,7 +9,7 @@ const ManageSubjects = () => {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState(null);
-  const [form, setForm] = useState({ name: '', code: '', description: '', classes: [] });
+  const [form, setForm] = useState({ name: '', code: '', description: '', class_assigned: '' });
 
   useEffect(() => { load(); }, []);
 
@@ -23,15 +23,15 @@ const ManageSubjects = () => {
     finally { setLoading(false); }
   };
 
-  const openCreate = () => { setEditing(null); setForm({ name:'', code:'', description:'', classes: [] }); setShowForm(true); };
-  const openEdit = (s) => { setEditing(s); setForm({ name:s.name, code:s.code || '', description:s.description || '', classes: s.classes || [] }); setShowForm(true); };
+  const openCreate = () => { setEditing(null); setForm({ name:'', code:'', description:'', class_assigned: '' }); setShowForm(true); };
+  const openEdit = (s) => { setEditing(s); setForm({ name:s.name, code:s.code || '', description:s.description || '', class_assigned: s.class_assigned || '' }); setShowForm(true); };
 
   const submit = async (e) => {
     e.preventDefault();
     try {
       if (editing) { await subjectAPI.update(editing.id, form); toast.success('Subject updated'); }
       else { await subjectAPI.create(form); toast.success('Subject created'); }
-      setShowForm(false); setEditing(null); setForm({ name:'', code:'', description:'', classes: [] });
+      setShowForm(false); setEditing(null); setForm({ name:'', code:'', description:'', class_assigned: '' });
       load();
     } catch (e) { console.error(e); toast.error('Failed to save subject'); }
   };
@@ -55,7 +55,8 @@ const ManageSubjects = () => {
       <div className="container mx-auto px-4">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold text-gray-900">Manage Subjects</h1>
-          <button onClick={openCreate} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">+ Add Subject</button>
+          {/* Create button hidden to enforce subject creation via Class Details */}
+          {/* <button onClick={openCreate} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">+ Add Subject</button> */}
         </div>
 
         {showForm && (
@@ -77,11 +78,11 @@ const ManageSubjects = () => {
                 <textarea rows="3" value={form.description} onChange={(e)=>setForm({...form, description:e.target.value})} className="w-full px-3 py-2 border rounded-lg" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Classes</label>
-                <select multiple value={form.classes} onChange={(e)=>setForm({...form, classes: Array.from(e.target.selectedOptions).map(o=>Number(o.value))})} className="w-full px-3 py-2 border rounded-lg h-32">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Class</label>
+                <select value={form.class_assigned} onChange={(e)=>setForm({...form, class_assigned: e.target.value})} className="w-full px-3 py-2 border rounded-lg">
+                  <option value="">Select a Class</option>
                   {classes.map(c => (<option key={c.id} value={c.id}>{c.name}{c.section?` - ${c.section}`:''}</option>))}
                 </select>
-                <p className="text-xs text-gray-500 mt-1">Hold Ctrl/Cmd to select multiple</p>
               </div>
               <div className="flex space-x-2">
                 <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">{editing ? 'Update' : 'Create'}</button>
@@ -101,7 +102,7 @@ const ManageSubjects = () => {
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Code</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Classes</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Class</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
                   </tr>
                 </thead>
@@ -110,7 +111,7 @@ const ManageSubjects = () => {
                     <tr key={s.id}>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">{s.name}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm">{s.code || '-'}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm">{(s.classes_detail || []).map(c=>`${c.name}${c.section?`-${c.section}`:''}`).join(', ') || '-'}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm">{s.class_name || '-'}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm space-x-2">
                         <button onClick={()=>openEdit(s)} className="px-3 py-1 bg-blue-600 text-white rounded">Edit</button>
                         <button onClick={()=>remove(s.id)} className="px-3 py-1 bg-red-600 text-white rounded">Delete</button>

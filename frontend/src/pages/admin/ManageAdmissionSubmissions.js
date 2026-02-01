@@ -1,3 +1,8 @@
+const DeprecatedManageAdmissionSubmissions = () => null;
+
+export default DeprecatedManageAdmissionSubmissions;
+
+/*
 import React, { useEffect, useState } from 'react';
 import { admissionAPI } from '../../services/api';
 import { useToast } from '../../context/ToastContext';
@@ -103,3 +108,4 @@ const ManageAdmissionSubmissions = () => {
 };
 
 export default ManageAdmissionSubmissions;
+*/

@@ -88,6 +88,7 @@ const TeacherDashboard = () => {
         });
       } catch(e){
         console.error(e);
+        toast.errorFrom(e, 'Failed to load dashboard data');
       }
     })();
   }, [year, month, user]);
@@ -126,7 +127,7 @@ const TeacherDashboard = () => {
       toast.success('Class reminders enabled.');
     } catch (error) {
       console.error(error);
-      toast.error('Failed to enable notifications.');
+      toast.errorFrom(error, 'Failed to enable notifications.');
     } finally {
       setPushLoading(false);
     }
@@ -144,7 +145,7 @@ const TeacherDashboard = () => {
       toast.success('Class reminders disabled.');
     } catch (error) {
       console.error(error);
-      toast.error('Failed to disable notifications.');
+      toast.errorFrom(error, 'Failed to disable notifications.');
     } finally {
       setPushLoading(false);
     }

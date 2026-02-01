@@ -8,6 +8,7 @@ class Fee(models.Model):
     STATUS_CHOICES = (
         ('pending', 'Pending'),
         ('running', 'Running'),
+        ('paid', 'Paid'),
         ('complete', 'Complete'),
     )
 
@@ -32,6 +33,7 @@ class Fee(models.Model):
     )
     
     title = models.CharField(max_length=200)
+    student = models.ForeignKey('users.Student', on_delete=models.CASCADE, related_name='fees', null=True, blank=True)
     class_assigned = models.ForeignKey('classes.Class', on_delete=models.CASCADE, related_name='fees')
     exam = models.ForeignKey('academics.Exam', on_delete=models.SET_NULL, null=True, blank=True, related_name='fees')
     amount = models.DecimalField(max_digits=10, decimal_places=2)
@@ -42,10 +44,14 @@ class Fee(models.Model):
     
     class Meta:
         ordering = ['-created_date']
-        unique_together = ['class_assigned', 'month', 'title']
+        # Unique constraint removed to support multiple student fees for same exam/month
     
     def __str__(self):
-        return f"{self.title} - {self.class_assigned} - {self.month}"
+        return f"{self.title} - {self.student} - {self.month}"
+
+    @property
+    def is_paid(self):
+        return self.status in ['paid', 'complete']
 
 
 class Payment(models.Model):
@@ -67,6 +73,7 @@ class Payment(models.Model):
     
     student = models.ForeignKey('users.Student', on_delete=models.CASCADE, related_name='payments')
     fee = models.ForeignKey(Fee, on_delete=models.CASCADE, related_name='payments')
+    exam = models.ForeignKey('academics.Exam', on_delete=models.SET_NULL, null=True, blank=True, related_name='payments')
     method = models.CharField(max_length=10, choices=METHOD_CHOICES)
     number = models.CharField(max_length=20, blank=True, null=True, help_text='Mobile number for digital payments')
     transaction_id = models.CharField(max_length=50, blank=True, null=True, verbose_name='Transaction ID')

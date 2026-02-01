@@ -1,23 +1,17 @@
 from rest_framework import serializers
-from .models import Subject, AttendanceRecord, TimetableSlot, Mark, Exam, TeacherSubjectAssignment
+from .models import Subject, AttendanceRecord, TimetableSlot, Mark, Exam, ExamSchedule, TeacherSubjectAssignment, ResultSubmission
 
 
 class SubjectSerializer(serializers.ModelSerializer):
-    classes_detail = serializers.SerializerMethodField()
+    class_name = serializers.SerializerMethodField()
+    class_assigned_id = serializers.PrimaryKeyRelatedField(source='class_assigned', read_only=True)
 
     class Meta:
         model = Subject
-        fields = ['id', 'name', 'code', 'description', 'classes', 'classes_detail']
+        fields = ['id', 'name', 'code', 'description', 'class_assigned', 'class_assigned_id', 'class_name', 'fourth_subject_eligible', 'is_fourth_subject', 'subject_code']
 
-    def get_classes_detail(self, obj):
-        return [
-            {
-                'id': c.id,
-                'name': c.name,
-                'section': c.section,
-            }
-            for c in obj.classes.all()
-        ]
+    def get_class_name(self, obj):
+        return str(obj.class_assigned)
 
 
 class AttendanceRecordSerializer(serializers.ModelSerializer):
@@ -67,10 +61,11 @@ class MarkSerializer(serializers.ModelSerializer):
     student_name = serializers.SerializerMethodField()
     class_name = serializers.SerializerMethodField()
     subject_name = serializers.SerializerMethodField()
+    exam_title = serializers.SerializerMethodField()
 
     class Meta:
         model = Mark
-        fields = ['id','student','student_name','class_assigned','class_name','subject','subject_name','exam_name','score','max_score','date','published']
+        fields = ['id','student','student_name','class_assigned','class_name','subject','subject_name','exam','exam_title','exam_name','score','max_score','date','published']
         read_only_fields = ['id','student_name','class_name','subject_name']
 
     def get_student_name(self, obj):
@@ -82,25 +77,30 @@ class MarkSerializer(serializers.ModelSerializer):
     def get_subject_name(self, obj):
         return obj.subject.name
 
+    def get_exam_title(self, obj):
+        if obj.exam and obj.exam.title:
+            return obj.exam.title
+        return obj.exam_name or None
+
+
+class ExamScheduleSerializer(serializers.ModelSerializer):
+    subject_name = serializers.ReadOnlyField(source='subject.name')
+    subject_code = serializers.ReadOnlyField(source='subject.code')
+
+    class Meta:
+        model = ExamSchedule
+        fields = ['id', 'subject', 'subject_name', 'subject_code', 'date', 'start_time', 'end_time']
+        read_only_fields = ['id', 'subject_name', 'subject_code']
+
 
 class ExamSerializer(serializers.ModelSerializer):
-    class_name = serializers.SerializerMethodField()
-    subject_name = serializers.SerializerMethodField()
-    invigilator_name = serializers.SerializerMethodField()
+    class_name = serializers.ReadOnlyField(source='class_assigned.name')
+    schedules = ExamScheduleSerializer(many=True, read_only=True)
 
     class Meta:
         model = Exam
-        fields = ['id', 'title', 'class_assigned', 'class_name', 'subject', 'subject_name', 'exam_fee', 'date', 'start_time', 'end_time', 'description', 'invigilator', 'invigilator_name', 'published']
-        read_only_fields = ['id', 'class_name', 'subject_name', 'invigilator_name']
-
-    def get_class_name(self, obj):
-        return str(obj.class_assigned)
-
-    def get_subject_name(self, obj):
-        return obj.subject.name if obj.subject else None
-
-    def get_invigilator_name(self, obj):
-        return obj.invigilator.user.get_full_name() if obj.invigilator else None
+        fields = ['id', 'title', 'class_assigned', 'class_name', 'exam_fee', 'published', 'results_published', 'created_at', 'schedules']
+        read_only_fields = ['id', 'created_at', 'class_name']
 
     def validate_exam_fee(self, value):
         if value is not None and value < 0:
@@ -127,3 +127,23 @@ class TeacherSubjectAssignmentSerializer(serializers.ModelSerializer):
 
     def get_class_name(self, obj):
         return str(obj.class_assigned)
+
+
+class ResultSubmissionSerializer(serializers.ModelSerializer):
+    teacher_name = serializers.SerializerMethodField()
+    class_name = serializers.SerializerMethodField()
+    subject_ids = serializers.SerializerMethodField()
+
+    class Meta:
+        model = ResultSubmission
+        fields = ['id', 'teacher', 'teacher_name', 'class_assigned', 'class_name', 'subjects', 'subject_ids', 'exam', 'exam_title', 'max_score', 'status', 'submitted_at']
+        read_only_fields = ['id', 'teacher_name', 'class_name', 'subject_ids', 'submitted_at']
+
+    def get_teacher_name(self, obj):
+        return obj.teacher.user.get_full_name() if obj.teacher else None
+
+    def get_class_name(self, obj):
+        return str(obj.class_assigned) if obj.class_assigned else None
+
+    def get_subject_ids(self, obj):
+        return list(obj.subjects.values_list('id', flat=True))

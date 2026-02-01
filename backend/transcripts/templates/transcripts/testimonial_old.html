@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <title>Testimonial</title>
+    <style>
+        @font-face {
+            font-family: 'Nikosh';
+            src: url('file://{{ font_path }}');
+            font-weight: normal;
+            font-style: normal;
+        }
+        @font-face {
+            font-family: 'Nikosh';
+            src: url('file://{{ font_bold_path }}');
+            font-weight: bold;
+            font-style: normal;
+        }
+        
+        @page {
+            size: A4 landscape;
+            margin: 10mm;
+            @top-center { content: none; }
+            @bottom-center { content: none; }
+        }
+
+        body {
+            font-family: 'Nikosh', sans-serif;
+            margin: 0;
+            padding: 0;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        .page-container {
+            display: flex;
+            flex-direction: row;
+            justify-content: space-between;
+            width: 100%;
+            height: 185mm; /* Approx available height on A4 Landscape */
+        }
+
+        .testimonial-box {
+            width: 49%;
+            height: 100%;
+            box-sizing: border-box;
+            position: relative;
+        }
+
+        /* Decorative Border Construction */
+        .border-dashed {
+            border: 3px dashed black;
+            padding: 4px;
+            height: 100%;
+            box-sizing: border-box;
+        }
+        
+        .border-solid {
+            border: 1px solid black;
+            height: 100%;
+            padding: 15px;
+            box-sizing: border-box;
+            position: relative;
+        }
+
+        /* Header */
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .college-name {
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        .address, .established {
+            font-size: 13px;
+            margin: 2px 0;
+        }
+        .doc-title {
+            font-size: 24px;
+            font-weight: bold;
+            text-decoration: underline;
+            margin-top: 15px;
+            margin-bottom: 15px;
+        }
+
+        /* Metadata Row */
+        .meta-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+        .meta-left {
+            text-align: left;
+        }
+        .meta-right {
+            text-align: right;
+        }
+        .meta-item {
+            margin-bottom: 4px;
+        }
+
+        /* Body Content */
+        .content {
+            text-align: justify;
+            font-size: 15px;
+            line-height: 1.6;
+            margin-bottom: 10px;
+        }
+        .field {
+            font-weight: bold;
+            padding: 0 5px;
+        }
+
+        /* Footer */
+        .footer {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 50px;
+            align-items: flex-end;
+            position: absolute;
+            bottom: 20px;
+            width: calc(100% - 30px); /* Adjust for padding */
+        }
+        .signature-block {
+            text-align: center;
+            width: 30%;
+        }
+        .signature-line {
+            margin-top: 5px;
+            border-top: 1px solid transparent; /* Placeholder for signature line if needed */
+        }
+
+    </style>
+</head>
+<body>
+    <div class="page-container">
+        <!-- Loop for Left (Template) and Right (Filled) -->
+        {% for form in forms %}
+        <div class="testimonial-box">
+            <div class="border-dashed">
+                <div class="border-solid">
+                    
+                    <div class="header">
+                        <div class="college-name">রোজী মোজাম্মেল মহিলা কলেজ</div>
+                        <div class="address">ডাকঘর-হাট গুরুদাসপুর, উপজেলা-গুরুদাসপুর</div>
+                        <div class="address">জেলা-নাটোর।</div>
+                        <div class="established">স্থাপিত-১৯৯৪ ইং</div>
+                        <div class="doc-title">প্রশংসা পত্র</div>
+                    </div>
+
+                    <div class="meta-row">
+                        <div class="meta-left">
+                            <div class="meta-item">ক্রমিক নং- {{ form.serial_no }}</div>
+                            <div class="meta-item" style="margin-top: 10px;">তারিখ : {{ form.issue_date }}ইং</div>
+                        </div>
+                        <div class="meta-right">
+                            <div class="meta-item">রোল নং- {{ form.roll }}</div>
+                            <div class="meta-item">রেজিঃ নং- {{ form.registration_no }}</div>
+                            <div class="meta-item">শিক্ষাবর্ষ- {{ form.session }}</div>
+                        </div>
+                    </div>
+
+                    <div class="content">
+                        এই মর্মে সানদে প্রত্যয়ন করিতেছি যে, নামঃ (বাংলায়) {{ form.name_bn }}, (ইংরেজীতে) {{ form.name_en }}.
+                        পিতাঃ {{ form.father_bn }}, মাতাঃ {{ form.mother_bn }}, গ্রামঃ {{ form.village }}, ডাকঘরঃ {{ form.post_office }}, উপজেলাঃ {{ form.upazila }}, জেলাঃ {{ form.district }}।
+                    </div>
+
+                    <div class="content">
+                        অত্র কলেজের একজন নিয়মিত/অনিয়মিত ছাত্রী ছিল। সে মাধ্যমিক ও উচ্চ মাধ্যমিক শিক্ষা বোর্ড {{ form.board_name }} এর আওতাধীন {{ form.exam_year }} সালের এইচ.এস.সি পরীক্ষায় {{ form.group }} শাখা হইতে জিপিএ {{ form.gpa }} (৫.০০) প্রাপ্ত হইয়া উত্তীর্ণ হইয়াছে। সংরক্ষিত নথিপত্র/ভর্তি বহি অনুসারে তাহার জন্ম তারিখ {{ form.dob_numeric }}, (কথায়ঃ {{ form.dob_words }})।
+                    </div>
+
+                    <div class="content">
+                        অত্র কলেজে অধ্যয়নকালে সে আইন-শৃঙ্খলা ভঙ্গ করে নাই এবং রাষ্ট্র বিরোধী কোন কাজে জড়িত ছিল না। আমার জানামতে সে উত্তম চরিত্রের অধিকারী। আমি তাহার উজ্জ্বল ভবিষ্যৎ ও সার্বিক মঙ্গল কামনা করি।
+                    </div>
+
+                    <div class="footer">
+                        <div class="signature-block">
+                            <div class="signature-line">প্রস্তুতকারী</div>
+                        </div>
+                        <div class="signature-block">
+                            <div class="signature-line">যাচাইকারী</div>
+                        </div>
+                        <div class="signature-block">
+                            <div class="signature-line">অধ্যক্ষের স্বাক্ষর</div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</body>
+</html>

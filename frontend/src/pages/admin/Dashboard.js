@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { teacherAPI, studentAPI, classAPI, noticeAPI, attendanceAPI, examAPI, teacherAssignmentAPI } from '../../services/api';
+import { useToast } from '../../context/ToastContext';
 
 const Dashboard = () => {
+  const toast = useToast();
   const [stats, setStats] = useState({
     totalTeachers: 0,
     totalStudents: 0,
@@ -76,6 +78,7 @@ const Dashboard = () => {
       });
     } catch (error) {
       console.error('Error fetching stats:', error);
+      toast.errorFrom(error, 'Failed to load dashboard stats');
     } finally {
       setLoading(false);
     }
@@ -103,20 +106,11 @@ const Dashboard = () => {
             <h1 className="text-4xl font-bold text-gray-900 mb-2">Admin Dashboard</h1>
             <p className="text-gray-600">Overview of your school management system</p>
           </div>
-          <Link
-            to="/admin/admission-form"
-            className="inline-flex items-center gap-2 px-5 py-2 rounded-lg bg-green-600 text-white font-semibold shadow hover:bg-green-700 transition"
-          >
-            Configure Admission Form
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-            </svg>
-          </Link>
         </div>
 
         {/* Main Stats Cards - Clickable */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <Link to="/admin/users" className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-lg p-6 hover:shadow-xl transform hover:scale-105 transition-all duration-200">
+          <Link to="/admin/teachers" className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-lg p-6 hover:shadow-xl transform hover:scale-105 transition-all duration-200">
             <div className="flex items-center justify-between">
               <div className="text-white">
                 <p className="text-blue-100 text-sm font-medium mb-1">Total Teachers</p>
@@ -131,7 +125,7 @@ const Dashboard = () => {
             </div>
           </Link>
 
-          <Link to="/admin/users" className="bg-gradient-to-br from-green-500 to-green-600 rounded-xl shadow-lg p-6 hover:shadow-xl transform hover:scale-105 transition-all duration-200">
+          <Link to="/admin/students" className="bg-gradient-to-br from-green-500 to-green-600 rounded-xl shadow-lg p-6 hover:shadow-xl transform hover:scale-105 transition-all duration-200">
             <div className="flex items-center justify-between">
               <div className="text-white">
                 <p className="text-green-100 text-sm font-medium mb-1">Total Students</p>
@@ -196,34 +190,17 @@ const Dashboard = () => {
             </div>
           </Link>
 
-          <Link to="/admin/admission-form" className="bg-white rounded-xl shadow-md p-6 hover:shadow-lg transition-all duration-200 border-2 border-transparent hover:border-green-200">
+          <Link to="/admin/testimonials" className="bg-white rounded-xl shadow-md p-6 hover:shadow-lg transition-all duration-200 border-2 border-transparent hover:border-sky-200">
             <div className="flex items-center">
-              <div className="p-3 rounded-lg bg-green-100">
-                <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .843-3 1.882v.236c0 .299.132.584.363.79L12 14l2.637-3.092A1.04 1.04 0 0015 10.118v-.236C15 8.843 13.657 8 12 8z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 14v4m0 0l-2 2m2-2l2 2" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2h-5.586a1 1 0 00-.707.293L9 5.293A1 1 0 018.293 5H6a2 2 0 00-2 2v11.998A2 2 0 006 20z" />
+              <div className="p-3 rounded-lg bg-sky-100">
+                <svg className="w-8 h-8 text-sky-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 14l9-5-9-5-9 5 9 5zm0 0v6m-7-3l7 4 7-4" />
                 </svg>
               </div>
               <div className="ml-4">
-                <p className="text-sm text-gray-600 font-medium">Admission Form</p>
-                <p className="text-2xl font-bold text-gray-900">Designer</p>
-                <p className="text-xs text-gray-500 mt-1">Update branding & fields</p>
-              </div>
-            </div>
-          </Link>
-
-          <Link to="/admin/admission-submissions" className="bg-white rounded-xl shadow-md p-6 hover:shadow-lg transition-all duration-200 border-2 border-transparent hover:border-emerald-200">
-            <div className="flex items-center">
-              <div className="p-3 rounded-lg bg-emerald-100">
-                <svg className="w-8 h-8 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-              </div>
-              <div className="ml-4">
-                <p className="text-sm text-gray-600 font-medium">Admission Forms</p>
-                <p className="text-2xl font-bold text-gray-900">Submissions</p>
-                <p className="text-xs text-gray-500 mt-1">View paid applicants</p>
+                <p className="text-sm text-gray-600 font-medium">Testimonials</p>
+                <p className="text-2xl font-bold text-gray-900">Requests</p>
+                <p className="text-xs text-gray-500 mt-1">Paid requests overview</p>
               </div>
             </div>
           </Link>
@@ -254,6 +231,21 @@ const Dashboard = () => {
                 <p className="text-sm text-gray-600 font-medium">Upcoming Exams</p>
                 <p className="text-2xl font-bold text-gray-900">{stats.upcomingExams}</p>
                 <p className="text-xs text-gray-500 mt-1">Scheduled exams</p>
+              </div>
+            </div>
+          </Link>
+
+          <Link to="/admin/results" className="bg-white rounded-xl shadow-md p-6 hover:shadow-lg transition-all duration-200 border-2 border-transparent hover:border-emerald-200">
+            <div className="flex items-center">
+              <div className="p-3 rounded-lg bg-emerald-100">
+                <svg className="w-8 h-8 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+              </div>
+              <div className="ml-4">
+                <p className="text-sm text-gray-600 font-medium">Result Submissions</p>
+                <p className="text-2xl font-bold text-gray-900">Review</p>
+                <p className="text-xs text-gray-500 mt-1">Publish results</p>
               </div>
             </div>
           </Link>
@@ -417,6 +409,19 @@ const Dashboard = () => {
               </div>
             </Link>
             <Link
+              to="/admin/classes"
+              className="p-4 text-center border-2 border-gray-200 rounded-xl hover:border-purple-400 hover:bg-purple-50 transition-all duration-200 group"
+            >
+              <div className="flex flex-col items-center">
+                <div className="p-3 bg-purple-100 rounded-lg mb-2 group-hover:bg-purple-200 transition-colors">
+                  <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h18v18H3V3zm4 4h10v2H7V7zm0 4h10v2H7v-2zm0 4h10v2H7v-2z" />
+                  </svg>
+                </div>
+                <p className="font-semibold text-sm">Classes</p>
+              </div>
+            </Link>
+            <Link
               to="/admin/exams"
               className="p-4 text-center border-2 border-gray-200 rounded-xl hover:border-pink-400 hover:bg-pink-50 transition-all duration-200 group"
             >
@@ -430,19 +435,6 @@ const Dashboard = () => {
               </div>
             </Link>
             <Link
-              to="/admin/marks"
-              className="p-4 text-center border-2 border-gray-200 rounded-xl hover:border-yellow-400 hover:bg-yellow-50 transition-all duration-200 group"
-            >
-              <div className="flex flex-col items-center">
-                <div className="p-3 bg-yellow-100 rounded-lg mb-2 group-hover:bg-yellow-200 transition-colors">
-                  <svg className="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                  </svg>
-                </div>
-                <p className="font-semibold text-sm">Marks</p>
-              </div>
-            </Link>
-            <Link
               to="/admin/subjects"
               className="p-4 text-center border-2 border-gray-200 rounded-xl hover:border-cyan-400 hover:bg-cyan-50 transition-all duration-200 group"
             >
@@ -453,6 +445,19 @@ const Dashboard = () => {
                   </svg>
                 </div>
                 <p className="font-semibold text-sm">Subjects</p>
+              </div>
+            </Link>
+            <Link
+              to="/admin/testimonials"
+              className="p-4 text-center border-2 border-gray-200 rounded-xl hover:border-sky-400 hover:bg-sky-50 transition-all duration-200 group"
+            >
+              <div className="flex flex-col items-center">
+                <div className="p-3 bg-sky-100 rounded-lg mb-2 group-hover:bg-sky-200 transition-colors">
+                  <svg className="w-6 h-6 text-sky-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 14l9-5-9-5-9 5 9 5zm0 0v6m-7-3l7 4 7-4" />
+                  </svg>
+                </div>
+                <p className="font-semibold text-sm">Testimonials</p>
               </div>
             </Link>
             <Link
@@ -482,19 +487,6 @@ const Dashboard = () => {
               </div>
             </Link>
             <Link
-              to="/admin/results"
-              className="p-4 text-center border-2 border-gray-200 rounded-xl hover:border-violet-400 hover:bg-violet-50 transition-all duration-200 group"
-            >
-              <div className="flex flex-col items-center">
-                <div className="p-3 bg-violet-100 rounded-lg mb-2 group-hover:bg-violet-200 transition-colors">
-                  <svg className="w-6 h-6 text-violet-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                  </svg>
-                </div>
-                <p className="font-semibold text-sm">Results</p>
-              </div>
-            </Link>
-            <Link
               to="/admin/fees"
               className="p-4 text-center border-2 border-gray-200 rounded-xl hover:border-lime-400 hover:bg-lime-50 transition-all duration-200 group"
             >
@@ -521,7 +513,7 @@ const Dashboard = () => {
               </div>
             </Link>
             <Link
-              to="/admin/transcripts"
+              to="/admin/testimonials"
               className="p-4 text-center border-2 border-gray-200 rounded-xl hover:border-sky-400 hover:bg-sky-50 transition-all duration-200 group"
             >
               <div className="flex flex-col items-center">
@@ -530,7 +522,7 @@ const Dashboard = () => {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 14l9-5-9-5-9 5 9 5zm0 0v6m-7-3l7 4 7-4" />
                   </svg>
                 </div>
-                <p className="font-semibold text-sm">Transcripts</p>
+                <p className="font-semibold text-sm">Testimonials</p>
               </div>
             </Link>
             <Link

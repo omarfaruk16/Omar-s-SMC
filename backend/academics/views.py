@@ -1,13 +1,17 @@
+import uuid
+
 from rest_framework import viewsets, status
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from .models import Subject, AttendanceRecord, TimetableSlot, Mark, Exam, TeacherSubjectAssignment
-from .serializers import SubjectSerializer, AttendanceRecordSerializer, TimetableSlotSerializer, MarkSerializer, ExamSerializer, TeacherSubjectAssignmentSerializer
+from .models import Subject, AttendanceRecord, TimetableSlot, Mark, Exam, ExamSchedule, TeacherSubjectAssignment, ResultSubmission
+from .serializers import SubjectSerializer, AttendanceRecordSerializer, TimetableSlotSerializer, MarkSerializer, ExamSerializer, TeacherSubjectAssignmentSerializer, ResultSubmissionSerializer
 from django.db import models
 from django.http import HttpResponse
-from .services import generate_exam_admit_card_pdf
+from django.utils import timezone
+from .services import generate_exam_admit_card_pdf, generate_exam_routine_pdf, generate_marksheet_pdf
 from fees.models import Fee, Payment
+from users.models import Student
 
 
 class SubjectViewSet(viewsets.ModelViewSet):
@@ -16,7 +20,7 @@ class SubjectViewSet(viewsets.ModelViewSet):
 
     def get_permissions(self):
         if self.action in ['list', 'retrieve']:
-            return [IsAuthenticated()]
+            return [AllowAny()]
         return [IsAuthenticated()]
 
     def create(self, request, *args, **kwargs):
@@ -49,7 +53,9 @@ class AttendanceViewSet(viewsets.ModelViewSet):
         elif user.role == 'teacher':
             try:
                 teacher = user.teacher_profile
-                qs = qs.filter(class_assigned__in=teacher.assigned_classes.all())
+                # Filter classes where teacher has at least one subject assignment
+                assigned_classes = TeacherSubjectAssignment.objects.filter(teacher=teacher).values_list('class_assigned', flat=True).distinct()
+                qs = qs.filter(class_assigned__in=assigned_classes)
             except Exception:
                 return AttendanceRecord.objects.none()
         elif user.role == 'student':
@@ -101,14 +107,25 @@ class AttendanceViewSet(viewsets.ModelViewSet):
         except Class.DoesNotExist:
             return Response({'error': 'Class not found'}, status=status.HTTP_404_NOT_FOUND)
 
-        # Teacher can only mark for assigned classes
+        # Teacher can only mark for assigned classes/subjects
         if user.role == 'teacher':
             try:
                 teacher = user.teacher_profile
             except Teacher.DoesNotExist:
                 return Response({'error': 'Teacher profile not found'}, status=status.HTTP_404_NOT_FOUND)
-            if not teacher.assigned_classes.filter(id=class_id).exists():
+            if not TeacherSubjectAssignment.objects.filter(
+                teacher=teacher,
+                class_assigned_id=class_id,
+            ).exists():
                 return Response({'error': 'Not assigned to this class'}, status=status.HTTP_403_FORBIDDEN)
+            if subject_id:
+                assigned = TeacherSubjectAssignment.objects.filter(
+                    teacher=teacher,
+                    class_assigned_id=class_id,
+                    subject_id=subject_id,
+                ).exists()
+                if not assigned:
+                    return Response({'error': 'Not assigned to this subject'}, status=status.HTTP_403_FORBIDDEN)
 
         students = Student.objects.filter(student_class=clazz)
         # Create/update records
@@ -177,20 +194,32 @@ class MarkViewSet(viewsets.ModelViewSet):
         user = self.request.user
         qs = Mark.objects.all()
         if user.role == 'admin':
-            return qs
+            pass
         elif user.role == 'teacher':
             try:
                 teacher = user.teacher_profile
-                return qs.filter(class_assigned__in=teacher.assigned_classes.all())
+                assignments = TeacherSubjectAssignment.objects.filter(teacher=teacher)
+                class_ids = assignments.values_list('class_assigned_id', flat=True)
+                subject_ids = assignments.values_list('subject_id', flat=True)
+                qs = qs.filter(class_assigned_id__in=class_ids, subject_id__in=subject_ids)
             except:
                 return Mark.objects.none()
         elif user.role == 'student':
             try:
                 student = user.student_profile
-                return qs.filter(student=student, published=True)
+                qs = qs.filter(student=student, published=True)
             except:
                 return Mark.objects.none()
-        return Mark.objects.none()
+        exam_id = self.request.query_params.get('exam_id')
+        if exam_id:
+            qs = qs.filter(exam_id=exam_id)
+        subject_id = self.request.query_params.get('subject_id')
+        if subject_id:
+            qs = qs.filter(subject_id=subject_id)
+        class_id = self.request.query_params.get('class_id')
+        if class_id:
+            qs = qs.filter(class_assigned_id=class_id)
+        return qs
 
     def create(self, request, *args, **kwargs):
         if request.user.role != 'teacher':
@@ -216,9 +245,166 @@ class MarkViewSet(viewsets.ModelViewSet):
         mark.save()
         return Response({'message': 'Mark published'})
 
+    @action(detail=False, methods=['get'], url_path='marksheet')
+    def marksheet(self, request):
+        if request.user.role != 'student':
+            return Response({'error': 'Student access required'}, status=status.HTTP_403_FORBIDDEN)
+
+        exam_id = request.query_params.get('exam_id')
+        batch_id = request.query_params.get('batch_id')
+        if not exam_id and not batch_id:
+            return Response({'error': 'exam_id or batch_id is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            student = request.user.student_profile
+        except Exception:
+            return Response({'error': 'Student profile not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        class_name = str(student.student_class) if student.student_class else "-"
+        exam_title = "Marksheet"
+        marks_qs = Mark.objects.filter(student=student, published=True)
+
+        if exam_id:
+            marks_qs = marks_qs.filter(exam_id=exam_id)
+            exam = Exam.objects.filter(id=exam_id).first()
+            if exam and exam.title:
+                exam_title = exam.title
+        else:
+            exams = Exam.objects.filter(batch_id=batch_id, class_assigned=student.student_class)
+            if not exams.exists():
+                return Response({'error': 'No exams found'}, status=status.HTTP_404_NOT_FOUND)
+            marks_qs = marks_qs.filter(exam__in=exams)
+            exam_title = exams.first().title or "Marksheet"
+
+        if not marks_qs.exists():
+            return Response({'error': 'No published results found'}, status=status.HTTP_404_NOT_FOUND)
+
+        filename, pdf_bytes = generate_marksheet_pdf(student, exam_title, class_name, marks_qs)
+        response = HttpResponse(pdf_bytes, content_type='application/pdf')
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        response['Content-Length'] = len(pdf_bytes)
+        return response
+
+
+class ResultSubmissionViewSet(viewsets.ModelViewSet):
+    queryset = ResultSubmission.objects.all()
+    serializer_class = ResultSubmissionSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        qs = ResultSubmission.objects.all()
+        if user.role == 'admin':
+            pass
+        elif user.role == 'teacher':
+            try:
+                teacher = user.teacher_profile
+                qs = qs.filter(teacher=teacher)
+            except Exception:
+                return ResultSubmission.objects.none()
+        else:
+            return ResultSubmission.objects.none()
+
+        exam_id = self.request.query_params.get('exam_id')
+        if exam_id:
+            qs = qs.filter(exam_id=exam_id)
+        class_id = self.request.query_params.get('class_id')
+        if class_id:
+            qs = qs.filter(class_assigned_id=class_id)
+        subject_id = self.request.query_params.get('subject_id')
+        if subject_id:
+            qs = qs.filter(subjects__id=subject_id)
+        return qs.distinct()
+
+    @action(detail=False, methods=['post'], url_path='submit')
+    def submit(self, request):
+        if request.user.role != 'teacher':
+            return Response({'error': 'Teacher access required'}, status=status.HTTP_403_FORBIDDEN)
+
+        exam_id = request.data.get('exam_id')
+        subject_id = request.data.get('subject_id')
+        class_id = request.data.get('class_id')
+        max_score = request.data.get('max_score', 100)
+        scores = request.data.get('scores', [])
+
+        if not exam_id or not subject_id or not class_id:
+            return Response({'error': 'exam_id, subject_id, class_id are required'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            teacher = request.user.teacher_profile
+        except Exception:
+            return Response({'error': 'Teacher profile not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        assigned = TeacherSubjectAssignment.objects.filter(
+            teacher=teacher,
+            class_assigned_id=class_id,
+            subject_id=subject_id,
+        ).exists()
+        if not assigned:
+            return Response({'error': 'Not assigned to this subject/class'}, status=status.HTTP_403_FORBIDDEN)
+
+        exam = Exam.objects.filter(id=exam_id, class_assigned_id=class_id).first()
+        if not exam:
+            return Response({'error': 'Exam not found for this subject/class'}, status=status.HTTP_404_NOT_FOUND)
+
+        schedule = ExamSchedule.objects.filter(exam=exam, subject_id=subject_id).first()
+        if not schedule:
+            return Response({'error': 'Subject not included in this exam'}, status=status.HTTP_404_NOT_FOUND)
+
+        submission, _ = ResultSubmission.objects.get_or_create(
+            teacher=teacher,
+            class_assigned_id=class_id,
+            exam=exam,
+            defaults={
+                'exam_title': exam.title or 'Exam',
+                'max_score': max_score,
+                'status': 'pending',
+            },
+        )
+        submission.max_score = max_score
+        submission.status = 'pending'
+        submission.save(update_fields=['max_score', 'status'])
+        submission.subjects.add(subject_id)
+
+        created = 0
+        for item in scores:
+            student_id = item.get('student_id')
+            score = item.get('score')
+            if student_id is None or score is None:
+                continue
+            Mark.objects.update_or_create(
+                student_id=student_id,
+                class_assigned_id=class_id,
+                subject_id=subject_id,
+                exam=exam,
+                defaults={
+                    'submission': submission,
+                    'exam_name': exam.title or 'Exam',
+                    'score': score,
+                    'max_score': max_score,
+                    'date': schedule.date,
+                    'published': False,
+                },
+            )
+            created += 1
+
+        return Response({'message': 'Results submitted', 'count': created, 'submission_id': submission.id})
+
+    @action(detail=True, methods=['post'], url_path='publish')
+    def publish(self, request, pk=None):
+        if request.user.role != 'admin':
+            return Response({'error': 'Admin access required'}, status=status.HTTP_403_FORBIDDEN)
+        submission = self.get_object()
+        submission.status = 'published'
+        submission.reviewed_by = request.user
+        submission.reviewed_at = timezone.now()
+        submission.save(update_fields=['status', 'reviewed_by', 'reviewed_at'])
+        Mark.objects.filter(submission=submission).update(published=True)
+        return Response({'message': 'Results published'})
+
 
 class ExamViewSet(viewsets.ModelViewSet):
-    queryset = Exam.objects.all()
+    queryset = Exam.objects.all().prefetch_related('schedules', 'schedules__subject')
     serializer_class = ExamSerializer
     permission_classes = [IsAuthenticated]
 
@@ -226,40 +412,54 @@ class ExamViewSet(viewsets.ModelViewSet):
         if not exam.exam_fee or exam.exam_fee <= 0:
             return
 
-        month_key = exam.date.strftime('%B').lower()
-        fee_title = f"{exam.title} Exam Fee"
-        existing_fee = Fee.objects.filter(
-            class_assigned=exam.class_assigned,
-            title=fee_title,
-            fee_type='exam',
-            month=month_key,
-        ).first()
+        # Determine month from first schedule or today
+        first_schedule = exam.schedules.order_by('date').first()
+        date_ref = first_schedule.date if first_schedule else timezone.now().date()
+        month_key = date_ref.strftime('%B').lower()
+        
+        fee_title = f"{exam.title} Fee"
+        
+        # Create fee for each student in the class
+        students = Student.objects.filter(student_class=exam.class_assigned)
+        fees_to_create = []
 
-        if existing_fee:
-            if existing_fee.exam_id is None:
-                existing_fee.exam = exam
-                existing_fee.save(update_fields=['exam'])
-            return
-
-        Fee.objects.create(
-            title=fee_title,
-            class_assigned=exam.class_assigned,
-            exam=exam,
-            amount=exam.exam_fee,
-            month=month_key,
-            status='running',
-            fee_type='exam',
-        )
+        for student in students:
+            if not Fee.objects.filter(student=student, exam=exam).exists():
+                fees_to_create.append(Fee(
+                    title=fee_title,
+                    student=student,
+                    class_assigned=exam.class_assigned,
+                    exam=exam,
+                    amount=exam.exam_fee,
+                    month=month_key,
+                    status='running',
+                    fee_type='exam',
+                ))
+        
+        if fees_to_create:
+            Fee.objects.bulk_create(fees_to_create)
 
     def get_queryset(self):
         user = self.request.user
-        qs = Exam.objects.all()
+        qs = Exam.objects.all().prefetch_related('schedules', 'schedules__subject')
+        
         if user.role == 'admin':
-            return qs
+            pass
         elif user.role == 'teacher':
             try:
                 teacher = user.teacher_profile
-                return qs.filter(models.Q(class_assigned__in=teacher.assigned_classes.all()) | models.Q(invigilator=teacher)).distinct()
+                assignments = TeacherSubjectAssignment.objects.filter(teacher=teacher)
+                
+                if not assignments.exists():
+                    return Exam.objects.none()
+                
+                # Precise filtering: Exam must be for a class/subject pair the teacher is assigned to
+                q_obj = models.Q()
+                for assignment in assignments:
+                    q_obj |= models.Q(class_assigned_id=assignment.class_assigned_id, schedules__subject_id=assignment.subject_id)
+                
+                qs = qs.filter(q_obj).distinct()
+                qs = qs.filter(published=True)
             except:
                 return Exam.objects.none()
         elif user.role == 'student':
@@ -273,27 +473,35 @@ class ExamViewSet(viewsets.ModelViewSet):
                 return Exam.objects.none()
         else:
             return Exam.objects.none()
-        # Optional filters by date range
-        date_from = self.request.query_params.get('date_from')
-        date_to = self.request.query_params.get('date_to')
-        if date_from:
-            qs = qs.filter(date__gte=date_from)
-        if date_to:
-            qs = qs.filter(date__lte=date_to)
+            
         return qs
 
     def create(self, request, *args, **kwargs):
         if request.user.role != 'admin':
             return Response({'error': 'Admin access required'}, status=status.HTTP_403_FORBIDDEN)
-        response = super().create(request, *args, **kwargs)
-        if response.status_code < 300:
-            try:
-                exam = Exam.objects.filter(id=response.data.get('id')).first()
-                if exam:
-                    self._ensure_exam_fee(exam)
-            except Exception:
-                pass
-        return response
+        
+        data = request.data
+        schedules_data = data.get('schedules', [])
+        
+        serializer = self.get_serializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        exam = serializer.save()
+        
+        for sch in schedules_data:
+            subject_id = sch.get('subject') or sch.get('subject_id')
+            if not subject_id: continue
+            
+            ExamSchedule.objects.create(
+                exam=exam,
+                subject_id=subject_id,
+                date=sch.get('date'),
+                start_time=sch.get('start_time'),
+                end_time=sch.get('end_time')
+            )
+            
+        self._ensure_exam_fee(exam)
+        
+        return Response(ExamSerializer(exam).data, status=status.HTTP_201_CREATED)
 
     def update(self, request, *args, **kwargs):
         if request.user.role != 'admin':
@@ -303,7 +511,20 @@ class ExamViewSet(viewsets.ModelViewSet):
     def destroy(self, request, *args, **kwargs):
         if request.user.role != 'admin':
             return Response({'error': 'Admin access required'}, status=status.HTTP_403_FORBIDDEN)
-        return super().destroy(request, *args, **kwargs)
+        exam = self.get_object()
+
+        from fees.models import Fee, Payment, FeePaymentIntent
+        from academics.models import ExamSchedule, Mark, ResultSubmission
+
+        Payment.objects.filter(exam=exam).delete()
+        FeePaymentIntent.objects.filter(fee__exam=exam).delete()
+        Fee.objects.filter(exam=exam).delete()
+        Mark.objects.filter(exam=exam).delete()
+        ResultSubmission.objects.filter(exam=exam).delete()
+        ExamSchedule.objects.filter(exam=exam).delete()
+
+        exam.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
     @action(detail=True, methods=['post'])
     def publish(self, request, pk=None):
@@ -312,56 +533,69 @@ class ExamViewSet(viewsets.ModelViewSet):
         exam = self.get_object()
         exam.published = True
         exam.save()
+        self._ensure_exam_fee(exam)
         return Response({'message': 'Exam published'})
 
     @action(detail=True, methods=['post'])
-    def unpublish(self, request, pk=None):
+    def publish_result(self, request, pk=None):
         if request.user.role != 'admin':
             return Response({'error': 'Admin access required'}, status=status.HTTP_403_FORBIDDEN)
         exam = self.get_object()
-        exam.published = False
+        exam.results_published = True
         exam.save()
-        return Response({'message': 'Exam unpublished'})
+        # Publish all marks associated with this exam
+        Mark.objects.filter(exam=exam).update(published=True)
+        return Response({'message': 'Results published'})
 
-    @action(detail=False, methods=['get'], url_path='admit-card')
-    def admit_card(self, request):
+
+    @action(detail=True, methods=['get'])
+    def download_routine(self, request, pk=None):
+        exam = self.get_object()
+        user = request.user
+        
+        if user.role == 'student':
+            if exam.class_assigned != user.student_profile.student_class:
+                return Response({'error': 'Denied'}, status=403)
+            
+            if exam.exam_fee > 0:
+                 has_paid = Payment.objects.filter(
+                     student=user.student_profile,
+                     fee__exam=exam,
+                     status='approved'
+                 ).exists()
+                 if not has_paid:
+                     return Response({'error': 'Fee not paid'}, status=403)
+                     
+        schedules = exam.schedules.all().order_by('date', 'start_time')
+        filename, pdf_bytes = generate_exam_routine_pdf(exam.title, str(exam.class_assigned), schedules)
+        response = HttpResponse(pdf_bytes, content_type='application/pdf')
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        return response
+
+    @action(detail=True, methods=['get'])
+    def download_admit_card(self, request, pk=None):
         if request.user.role != 'student':
             return Response({'error': 'Student access required'}, status=status.HTTP_403_FORBIDDEN)
 
-        exam_title = request.query_params.get('exam_title')
-        class_id = request.query_params.get('class_id')
-        if not exam_title or not class_id:
-            return Response({'error': 'exam_title and class_id are required'}, status=status.HTTP_400_BAD_REQUEST)
-
-        try:
-            student = request.user.student_profile
-        except Exception:
-            return Response({'error': 'Student profile not found'}, status=status.HTTP_404_NOT_FOUND)
-
-        if str(student.student_class_id) != str(class_id):
-            return Response({'error': 'Not allowed for this class'}, status=status.HTTP_403_FORBIDDEN)
-
-        exams = Exam.objects.filter(title=exam_title, class_assigned_id=class_id, published=True).order_by('date', 'start_time')
-        if not exams.exists():
-            return Response({'error': 'No published exams found'}, status=status.HTTP_404_NOT_FOUND)
-
-        fee_title = f"{exam_title} Exam Fee"
-        fee = Fee.objects.filter(
-            class_assigned_id=class_id,
-            title=fee_title,
-            fee_type='exam',
-        ).first()
-        if not fee:
-            return Response({'error': 'Exam fee not configured'}, status=status.HTTP_404_NOT_FOUND)
-
-        payment = Payment.objects.filter(student=student, fee=fee, status='approved').first()
-        if not payment:
-            return Response({'error': 'Exam fee payment required'}, status=status.HTTP_403_FORBIDDEN)
-
-        filename, pdf_bytes = generate_exam_admit_card_pdf(student, exam_title, exams)
+        exam = self.get_object()
+        student = request.user.student_profile
+        
+        if exam.class_assigned != student.student_class:
+             return Response({'error': 'Denied'}, status=403)
+             
+        if exam.exam_fee > 0:
+             has_paid = Payment.objects.filter(
+                 student=student,
+                 fee__exam=exam,
+                 status='approved'
+             ).exists()
+             if not has_paid:
+                 return Response({'error': 'Fee not paid'}, status=403)
+        
+        schedules = exam.schedules.all().order_by('date', 'start_time')
+        filename, pdf_bytes = generate_exam_admit_card_pdf(student, exam.title, schedules)
         response = HttpResponse(pdf_bytes, content_type='application/pdf')
-        response['Content-Disposition'] = f'attachment; filename=\"{filename}\"'
-        response['Content-Length'] = len(pdf_bytes)
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
         return response
 
 

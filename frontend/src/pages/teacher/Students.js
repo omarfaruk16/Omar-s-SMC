@@ -1,27 +1,43 @@
-import React, { useEffect, useState } from 'react';
-import { teacherAPI, studentAPI, subjectAPI, attendanceAPI, markAPI, timetableAPI } from '../../services/api';
+import React, { useEffect, useMemo, useState } from 'react';
+import { teacherAPI, studentAPI, attendanceAPI, markAPI, teacherAssignmentAPI } from '../../services/api';
 import { useToast } from '../../context/ToastContext';
 
 const TeacherStudents = () => {
   const toast = useToast();
   const [classes, setClasses] = useState([]);
-  const [subjects, setSubjects] = useState([]);
+  const [assignments, setAssignments] = useState([]);
   const [selectedClass, setSelectedClass] = useState('');
   const [selectedSubject, setSelectedSubject] = useState('');
   const [students, setStudents] = useState([]);
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [attendance, setAttendance] = useState([]);
   const [marks, setMarks] = useState([]);
-  const [slots, setSlots] = useState([]);
 
   useEffect(() => {
     (async () => {
       try {
-        const [tRes, sRes, slRes] = await Promise.all([teacherAPI.getAll(), subjectAPI.getAll(), timetableAPI.getAll()]);
+        const tRes = await teacherAPI.getAll();
         const me = Array.isArray(tRes.data) && tRes.data.length > 0 ? tRes.data[0] : null;
-        setClasses(me?.assigned_classes || []);
-        setSubjects(sRes.data);
-        setSlots(slRes.data);
+        if (!me?.id) {
+          setClasses([]);
+          setAssignments([]);
+          return;
+        }
+
+        const aRes = await teacherAssignmentAPI.getByTeacher(me.id);
+        const list = Array.isArray(aRes.data) ? aRes.data : [];
+        setAssignments(list);
+
+        const classMap = new Map();
+        list.forEach((a) => {
+          if (!classMap.has(a.class_assigned)) {
+            classMap.set(a.class_assigned, {
+              id: a.class_assigned,
+              name: a.class_name || `Class ${a.class_assigned}`,
+            });
+          }
+        });
+        setClasses(Array.from(classMap.values()));
       } catch (e) { console.error(e); toast.error('Failed to load initial data'); }
     })();
   }, []);
@@ -50,12 +66,28 @@ const TeacherStudents = () => {
     })();
   }, [selectedStudent, selectedSubject]);
 
-  // Allowed subjects are those the teacher actually teaches for the selected class (from timetable slots)
-  const allowedSubjectIds = React.useMemo(() => {
+  useEffect(() => {
+    setSelectedSubject('');
+    setSelectedStudent(null);
+    setAttendance([]);
+    setMarks([]);
+  }, [selectedClass]);
+
+  const subjectOptions = useMemo(() => {
     if (!selectedClass) return [];
-    const ids = new Set(slots.filter(s => s.class_assigned === Number(selectedClass) && s.subject).map(s => s.subject));
-    return Array.from(ids);
-  }, [selectedClass, slots]);
+    const map = new Map();
+    assignments
+      .filter((a) => String(a.class_assigned) === String(selectedClass))
+      .forEach((a) => {
+        if (!map.has(a.subject)) {
+          map.set(a.subject, {
+            id: a.subject,
+            name: a.subject_name || `Subject ${a.subject}`,
+          });
+        }
+      });
+    return Array.from(map.values());
+  }, [assignments, selectedClass]);
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
@@ -68,12 +100,9 @@ const TeacherStudents = () => {
           </select>
           <select value={selectedSubject} onChange={(e)=>setSelectedSubject(e.target.value)} className="px-3 py-2 border rounded-lg">
             <option value="">Select Subject</option>
-            {subjects
-              .filter(s => !selectedClass || (s.classes || []).includes(Number(selectedClass)))
-              .filter(s => !selectedClass || allowedSubjectIds.includes(s.id))
-              .map(s => (
-                <option key={s.id} value={s.id}>{s.name}</option>
-              ))}
+            {subjectOptions.map((s) => (
+              <option key={s.id} value={s.id}>{s.name}</option>
+            ))}
           </select>
           <select value={selectedStudent?.id || ''} onChange={(e)=>setSelectedStudent(students.find(x=>x.id===Number(e.target.value)) || null)} className="px-3 py-2 border rounded-lg">
             <option value="">Select Student</option>

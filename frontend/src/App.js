@@ -12,7 +12,6 @@ import About from './pages/About';
 import Teachers from './pages/Teachers';
 import Notices from './pages/Notices';
 import NoticeDetail from './pages/NoticeDetail';
-import Results from './pages/Results';
 import Contact from './pages/Contact';
 import AdmissionForm from './pages/AdmissionForm';
 
@@ -34,21 +33,26 @@ import Profile from './pages/Profile';
 import AdminDashboard from './pages/admin/Dashboard';
 import ManagePending from './pages/admin/ManagePending';
 import ManageUsers from './pages/admin/ManageUsers';
+import ManageStudents from './pages/admin/ManageStudents';
+import ManageTeachers from './pages/admin/ManageTeachers';
+import TeacherDetails from './pages/admin/TeacherDetails';
+import StudentDetails from './pages/admin/StudentDetails';
 import ManageClasses from './pages/admin/ManageClasses';
+import ClassDetails from './pages/admin/ClassDetails';
 import ManageNotices from './pages/admin/ManageNotices';
-import ManageResults from './pages/admin/ManageResults';
 import ManageFees from './pages/admin/ManageFees';
 import ManagePayments from './pages/admin/ManagePayments';
 import ManageSubjects from './pages/admin/ManageSubjects';
 import ManageTimetable from './pages/admin/ManageTimetable';
 import ManageAttendance from './pages/admin/ManageAttendance';
-import ManageExams from './pages/admin/ManageExams';
-import ManageMarks from './pages/admin/ManageMarks';
+import ManageExams from './pages/admin/ManageExamsNew';
+import ManageResults from './pages/admin/ManageResults';
+import ExamResultsView from './pages/admin/ExamResultsView';
 import TeacherAssignments from './pages/admin/TeacherAssignments';
 import ManageTeacherAssignments from './pages/admin/ManageTeacherAssignments';
-import ManageAdmissionForm from './pages/admin/ManageAdmissionForm';
-import ManageTranscripts from './pages/admin/ManageTranscripts';
-import ManageAdmissionSubmissions from './pages/admin/ManageAdmissionSubmissions';
+import StudentEdit from './pages/admin/StudentEdit';
+import TeacherEdit from './pages/admin/TeacherEdit';
+import ManageTestimonials from './pages/admin/ManageTestimonials';
 
 // Teacher Dashboard
 import TeacherDashboard from './pages/teacher/Dashboard';
@@ -63,9 +67,11 @@ import TeacherResults from './pages/teacher/Results';
 import StudentDashboard from './pages/student/Dashboard';
 import StudentMaterials from './pages/student/Materials';
 import StudentFees from './pages/student/Fees';
+import StudentExams from './pages/student/Exams';
+import StudentExamResults from './pages/student/ExamResults';
 import StudentAttendance from './pages/student/Attendance';
 import StudentTimetable from './pages/student/Timetable';
-import TranscriptRequest from './pages/student/TranscriptRequest';
+import TestimonialRequest from './pages/student/TestimonialRequest';
 import PaymentSuccess from './pages/PaymentSuccess';
 import PaymentFail from './pages/PaymentFail';
 import PaymentCancel from './pages/PaymentCancel';
@@ -84,7 +90,6 @@ function App() {
             <Route path="/teachers" element={<Teachers />} />
             <Route path="/notices" element={<Notices />} />
             <Route path="/notices/:id" element={<NoticeDetail />} />
-            <Route path="/results" element={<Results />} />
             <Route path="/contact" element={<Contact />} />
             <Route path="/admission" element={<AdmissionForm />} />
 
@@ -130,6 +135,54 @@ function App() {
               }
             />
             <Route
+              path="/admin/students/edit/:id"
+              element={
+                <PrivateRoute allowedRoles={['admin']}>
+                  <StudentEdit />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/admin/teachers/edit/:id"
+              element={
+                <PrivateRoute allowedRoles={['admin']}>
+                  <TeacherEdit />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/admin/students"
+              element={
+                <PrivateRoute allowedRoles={['admin']}>
+                  <ManageStudents />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/admin/teachers"
+              element={
+                <PrivateRoute allowedRoles={['admin']}>
+                  <ManageTeachers />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/admin/teachers/:id"
+              element={
+                <PrivateRoute allowedRoles={['admin']}>
+                  <TeacherDetails />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/admin/students/:id"
+              element={
+                <PrivateRoute allowedRoles={['admin']}>
+                  <StudentDetails />
+                </PrivateRoute>
+              }
+            />
+            <Route
               path="/admin/classes"
               element={
                 <PrivateRoute allowedRoles={['admin']}>
@@ -138,18 +191,18 @@ function App() {
               }
             />
             <Route
-              path="/admin/notices"
+              path="/admin/classes/:classId"
               element={
                 <PrivateRoute allowedRoles={['admin']}>
-                  <ManageNotices />
+                  <ClassDetails />
                 </PrivateRoute>
               }
             />
             <Route
-              path="/admin/results"
+              path="/admin/notices"
               element={
                 <PrivateRoute allowedRoles={['admin']}>
-                  <ManageResults />
+                  <ManageNotices />
                 </PrivateRoute>
               }
             />
@@ -202,10 +255,18 @@ function App() {
               }
             />
             <Route
-              path="/admin/marks"
+              path="/admin/results"
               element={
                 <PrivateRoute allowedRoles={['admin']}>
-                  <ManageMarks />
+                  <ManageResults />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/admin/results/view"
+              element={
+                <PrivateRoute allowedRoles={['admin']}>
+                  <ExamResultsView />
                 </PrivateRoute>
               }
             />
@@ -226,26 +287,10 @@ function App() {
               }
             />
             <Route
-              path="/admin/admission-form"
+              path="/admin/testimonials"
               element={
                 <PrivateRoute allowedRoles={['admin']}>
-                  <ManageAdmissionForm />
-                </PrivateRoute>
-              }
-            />
-            <Route
-              path="/admin/admission-submissions"
-              element={
-                <PrivateRoute allowedRoles={['admin']}>
-                  <ManageAdmissionSubmissions />
-                </PrivateRoute>
-              }
-            />
-            <Route
-              path="/admin/transcripts"
-              element={
-                <PrivateRoute allowedRoles={['admin']}>
-                  <ManageTranscripts />
+                  <ManageTestimonials />
                 </PrivateRoute>
               }
             />
@@ -334,6 +379,22 @@ function App() {
               }
             />
             <Route
+              path="/student/exams"
+              element={
+                <PrivateRoute allowedRoles={['student']}>
+                  <StudentExams />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/student/exams/results"
+              element={
+                <PrivateRoute allowedRoles={['student']}>
+                  <StudentExamResults />
+                </PrivateRoute>
+              }
+            />
+            <Route
               path="/student/attendance"
               element={
                 <PrivateRoute allowedRoles={['student']}>
@@ -350,10 +411,10 @@ function App() {
               }
             />
             <Route
-              path="/student/transcripts"
+              path="/student/testimonials"
               element={
                 <PrivateRoute allowedRoles={['student']}>
-                  <TranscriptRequest />
+                  <TestimonialRequest />
                 </PrivateRoute>
               }
             />

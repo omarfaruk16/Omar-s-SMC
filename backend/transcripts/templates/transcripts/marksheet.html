@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <style>
+        @font-face {
+            font-family: 'Nikosh';
+            src: url('{{ font_path }}');
+        }
+        @font-face {
+            font-family: 'NikoshBAN';
+            src: url('{{ font_bold_path }}');
+            font-weight: bold;
+        }
+        body { font-family: 'Nikosh', sans-serif; font-size: 14px; }
+        h1, h2, h3 { text-align: center; margin: 5px 0; }
+        .info-table { width: 100%; margin-bottom: 20px; }
+        .info-table td { padding: 5px; }
+        .result-table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        .result-table th, .result-table td { border: 1px solid black; padding: 8px; text-align: center; }
+        .header { text-align: center; margin-bottom: 30px; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h2>School Name</h2>
+        <h3>Exam: {{ exam_title }}</h3>
+        <p>Date: {{ issue_date|date:"d M Y" }}</p>
+    </div>
+
+    <table class="info-table">
+        <tr>
+            <td><strong>Student Name:</strong> {{ student.user.get_full_name }}</td>
+            <td><strong>Class:</strong> {{ class_name }}</td>
+        </tr>
+        <tr>
+            <td><strong>ID:</strong> {{ student.student_id }}</td>
+            <td><strong>Roll:</strong> {{ student.roll_number }}</td>
+        </tr>
+    </table>
+
+    <table class="result-table">
+        <thead>
+            <tr>
+                <th>Subject Code</th>
+                <th>Subject Name</th>
+                <th>Total Marks</th>
+                <th>Obtained Marks</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for mark in marks %}
+            <tr>
+                <td>{{ mark.subject.subject_code|default:"-" }}</td>
+                <td>{{ mark.subject.name }}</td>
+                <td>{{ mark.max_score }}</td>
+                <td>{{ mark.score }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</body>
+</html>

@@ -37,11 +37,16 @@ class RegisterTeacherView(generics.CreateAPIView):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         teacher = serializer.save()
+
+        if request.user.is_authenticated and request.user.role == 'admin':
+            teacher.user.status = 'approved'
+            teacher.user.is_active = True
+            teacher.user.save(update_fields=['status', 'is_active'])
         
         return Response({
-            'message': 'Teacher registration successful. Please wait for admin approval.',
+            'message': 'Teacher registration successful.' if teacher.user.status == 'approved' else 'Teacher registration successful. Please wait for admin approval.',
             'teacher_id': teacher.teacher_id,
-            'status': 'pending'
+            'status': teacher.user.status
         }, status=status.HTTP_201_CREATED)
 
 
@@ -56,27 +61,40 @@ class RegisterStudentView(generics.CreateAPIView):
         serializer.is_valid(raise_exception=True)
         student = serializer.save()
 
+        if request.user.is_authenticated and request.user.role == 'admin':
+            student.user.status = 'approved'
+            student.user.is_active = True
+            student.user.save(update_fields=['status', 'is_active'])
+
         download_url = None
         download_token = None
         template_data = None
         template = AdmissionFormTemplate.get_default()
         if template:
-            download_token = build_registration_download_token(student)
-            download_url = request.build_absolute_uri(
-                f"{reverse('admission-registration-download')}?token={download_token}"
-            )
-            template_data = {
-                'slug': template.slug,
-                'name': template.name,
-                'blank_form_url': request.build_absolute_uri(
-                    reverse('admission-form-template-blank', args=[template.slug])
-                ),
-            }
+            try:
+                download_token = build_registration_download_token(student)
+                download_url = request.build_absolute_uri(
+                    f"{reverse('admission-registration-download')}?token={download_token}"
+                )
+                blank_form_url = None
+                if template.slug:
+                    blank_form_url = request.build_absolute_uri(
+                        reverse('admission-form-template-blank', args=[template.slug])
+                    )
+                template_data = {
+                    'slug': template.slug,
+                    'name': template.name,
+                    'blank_form_url': blank_form_url,
+                }
+            except Exception:
+                download_url = None
+                download_token = None
+                template_data = None
 
         return Response({
-            'message': 'Student registration successful. Please wait for admin approval.',
+            'message': 'Student registration successful.' if student.user.status == 'approved' else 'Student registration successful. Please wait for admin approval.',
             'student_id': student.id,
-            'status': 'pending',
+            'status': student.user.status,
             'admission_form': {
                 'download_url': download_url,
                 'download_token': download_token,
@@ -96,6 +114,22 @@ class UserProfileView(generics.RetrieveUpdateAPIView):
     def update(self, request, *args, **kwargs):
         partial = kwargs.pop('partial', False)
         instance = self.get_object()
+        
+        # Protected fields that cannot be edited through profile
+        protected_fields = []
+        
+        if instance.role == 'student':
+            protected_fields = ['roll_number', 'registration', 'session', 'student_class']
+        elif instance.role == 'teacher':
+            protected_fields = ['teacher_id']
+        
+        # Check if user is trying to modify protected fields
+        for field in protected_fields:
+            if field in request.data:
+                return Response({
+                    'error': f'Field "{field}" cannot be modified through profile update.'
+                }, status=status.HTTP_400_BAD_REQUEST)
+        
         serializer = self.get_serializer(instance, data=request.data, partial=partial)
         serializer.is_valid(raise_exception=True)
         self.perform_update(serializer)
@@ -110,6 +144,12 @@ class ChangePasswordView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
+        # Allow skipping password change if all fields are empty
+        if not request.data.get('current_password') and not request.data.get('new_password') and not request.data.get('new_password_confirm'):
+            return Response({
+                'message': 'No password changes requested.'
+            }, status=status.HTTP_200_OK)
+        
         serializer = ChangePasswordSerializer(data=request.data, context={'user': request.user})
         serializer.is_valid(raise_exception=True)
 
@@ -265,6 +305,32 @@ class TeacherViewSet(viewsets.ModelViewSet):
         if request.user.role != 'admin':
             return Response({'error': 'Admin access required'}, status=status.HTTP_403_FORBIDDEN)
         return super().destroy(request, *args, **kwargs)
+
+    def update(self, request, *args, **kwargs):
+        """Update teacher profile and related user fields (including optional password)."""
+        partial = kwargs.pop('partial', False)
+        instance = self.get_object()
+        data = request.data.copy()
+
+        user = instance.user
+        user_fields = ['first_name', 'last_name', 'email', 'phone']
+        for field in user_fields:
+            if field in data:
+                setattr(user, field, data.get(field))
+
+        password = data.pop('password', None)
+        if password:
+            user.set_password(password)
+
+        user.save()
+
+        for field in user_fields:
+            data.pop(field, None)
+
+        serializer = self.get_serializer(instance, data=data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+        return Response(serializer.data)
     
     @action(detail=False, methods=['get'])
     def pending(self, request):
@@ -319,6 +385,22 @@ class TeacherViewSet(viewsets.ModelViewSet):
             'teacher': serializer.data
         })
 
+    @action(detail=True, methods=['post'])
+    def toggle_status(self, request, pk=None):
+        """Toggle user active status (block/unblock)"""
+        if request.user.role != 'admin':
+            return Response({'error': 'Admin access required'}, status=status.HTTP_403_FORBIDDEN)
+        
+        teacher = self.get_object()
+        teacher.user.is_active = not teacher.user.is_active
+        teacher.user.save()
+        
+        status_msg = 'activated' if teacher.user.is_active else 'blocked'
+        return Response({
+            'message': f'Teacher {status_msg} successfully',
+            'is_active': teacher.user.is_active
+        })
+
 
 class StudentViewSet(viewsets.ModelViewSet):
     """ViewSet for Student management"""
@@ -339,6 +421,32 @@ class StudentViewSet(viewsets.ModelViewSet):
         if request.user.role != 'admin':
             return Response({'error': 'Admin access required'}, status=status.HTTP_403_FORBIDDEN)
         return super().destroy(request, *args, **kwargs)
+
+    def update(self, request, *args, **kwargs):
+        """Update student profile and related user fields (including optional password)."""
+        partial = kwargs.pop('partial', False)
+        instance = self.get_object()
+        data = request.data.copy()
+
+        user = instance.user
+        user_fields = ['first_name', 'last_name', 'email', 'phone']
+        for field in user_fields:
+            if field in data:
+                setattr(user, field, data.get(field))
+
+        password = data.pop('password', None)
+        if password:
+            user.set_password(password)
+
+        user.save()
+
+        for field in user_fields:
+            data.pop(field, None)
+
+        serializer = self.get_serializer(instance, data=data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+        return Response(serializer.data)
 
     @action(detail=False, methods=['get'])
     def pending(self, request):
@@ -368,6 +476,47 @@ class StudentViewSet(viewsets.ModelViewSet):
         student.user.status = 'rejected'
         student.user.save()
         return Response({'message': 'Student rejected'})
+    
+    @action(detail=True, methods=['post'])
+    def suspend(self, request, pk=None):
+        """Suspend/unsuspend a student (admin only)"""
+        if request.user.role != 'admin':
+            return Response({'error': 'Admin access required'}, status=status.HTTP_403_FORBIDDEN)
+        student = self.get_object()
+        student.user.is_active = not student.user.is_active
+        student.user.save()
+        status_msg = 'suspended' if not student.user.is_active else 'activated'
+        return Response({'message': f'Student {status_msg} successfully', 'is_active': student.user.is_active})
+
+    @action(detail=True, methods=['post'])
+    def toggle_status(self, request, pk=None):
+        """Toggle user active status (block/unblock)"""
+        if request.user.role != 'admin':
+            return Response({'error': 'Admin access required'}, status=status.HTTP_403_FORBIDDEN)
+        
+        student = self.get_object()
+        student.user.is_active = not student.user.is_active
+        student.user.save()
+        
+        status_msg = 'activated' if student.user.is_active else 'blocked'
+        return Response({
+            'message': f'Student {status_msg} successfully',
+            'is_active': student.user.is_active
+        })
+    
+    @action(detail=True, methods=['patch'])
+    def update_roll(self, request, pk=None):
+        """Update student roll number (admin only)"""
+        if request.user.role != 'admin':
+            return Response({'error': 'Admin access required'}, status=status.HTTP_403_FORBIDDEN)
+        student = self.get_object()
+        roll_number = request.data.get('roll_number')
+        if roll_number is not None:
+            student.roll_number = roll_number
+            student.save()
+            serializer = self.get_serializer(student)
+            return Response({'message': 'Roll number updated successfully', 'student': serializer.data})
+        return Response({'error': 'roll_number is required'}, status=status.HTTP_400_BAD_REQUEST)
 
     @action(detail=True, methods=['post'])
     def change_class(self, request, pk=None):
@@ -405,7 +554,11 @@ class StudentViewSet(viewsets.ModelViewSet):
                 teacher = user.teacher_profile
             except:
                 return Response({'error': 'Teacher profile not found'}, status=status.HTTP_404_NOT_FOUND)
-            if not teacher.assigned_classes.filter(id=class_id).exists():
+            from academics.models import TeacherSubjectAssignment
+            if not TeacherSubjectAssignment.objects.filter(
+                teacher=teacher,
+                class_assigned_id=class_id,
+            ).exists():
                 return Response({'error': 'Not assigned to this class'}, status=status.HTTP_403_FORBIDDEN)
             queryset = Student.objects.filter(student_class=clazz)
         else:

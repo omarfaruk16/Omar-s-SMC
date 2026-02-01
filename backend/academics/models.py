@@ -16,16 +16,20 @@ class TeacherSubjectAssignment(models.Model):
 
 
 class Subject(models.Model):
-    name = models.CharField(max_length=100, unique=True)
-    code = models.CharField(max_length=20, blank=True, null=True)
+    name = models.CharField(max_length=100)
+    code = models.CharField(max_length=20)
     description = models.TextField(blank=True, null=True)
-    classes = models.ManyToManyField('classes.Class', related_name='subjects', blank=True)
+    class_assigned = models.ForeignKey('classes.Class', on_delete=models.CASCADE, related_name='subjects')
+    fourth_subject_eligible = models.BooleanField(default=False, help_text='Can this subject be selected as a fourth subject?')
+    is_fourth_subject = models.BooleanField(default=False, help_text='Is this a fourth subject?')  # Added as per requirement
+    subject_code = models.CharField(max_length=20, blank=True, null=True) # Added as per requirement, though 'code' existed.
 
     class Meta:
         ordering = ['name']
+        unique_together = ('class_assigned', 'name')
 
     def __str__(self):
-        return self.name
+        return f"{self.name} ({self.code}) - {self.class_assigned}"
 
 
 class AttendanceRecord(models.Model):
@@ -39,7 +43,7 @@ class AttendanceRecord(models.Model):
     subject = models.ForeignKey('academics.Subject', on_delete=models.SET_NULL, null=True, blank=True, related_name='attendance_records')
     status = models.CharField(max_length=10, choices=STATUS_CHOICES)
     marked_by = models.ForeignKey('users.Teacher', on_delete=models.SET_NULL, null=True, blank=True, related_name='attendance_marked')
-    created_at = models.DateTimeField(auto_now_add=True)
+    created_at = models.DateTimeField(auto_now_add=True, null=True)
 
     class Meta:
         unique_together = ('date', 'student')
@@ -72,7 +76,8 @@ class Mark(models.Model):
     class_assigned = models.ForeignKey('classes.Class', on_delete=models.CASCADE, related_name='marks')
     subject = models.ForeignKey(Subject, on_delete=models.CASCADE, related_name='marks')
     submission = models.ForeignKey('ResultSubmission', on_delete=models.SET_NULL, null=True, blank=True, related_name='marks')
-    exam_name = models.CharField(max_length=100)
+    exam = models.ForeignKey('academics.Exam', on_delete=models.SET_NULL, null=True, blank=True, related_name='marks')
+    exam_name = models.CharField(max_length=100, blank=True)
     score = models.FloatField()
     max_score = models.FloatField(default=100)
     date = models.DateField()
@@ -115,20 +120,32 @@ class ResultSubmission(models.Model):
 
 
 class Exam(models.Model):
-    """Exam schedule for a class/subject."""
+    """Exam Event (e.g. Final Term 2026)"""
     title = models.CharField(max_length=200)
     class_assigned = models.ForeignKey('classes.Class', on_delete=models.CASCADE, related_name='exams')
-    subject = models.ForeignKey(Subject, on_delete=models.SET_NULL, null=True, blank=True, related_name='exams')
-    exam_fee = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
-    date = models.DateField()
-    start_time = models.TimeField(null=True, blank=True)
-    end_time = models.TimeField(null=True, blank=True)
-    description = models.TextField(blank=True, null=True)
-    invigilator = models.ForeignKey('users.Teacher', on_delete=models.SET_NULL, null=True, blank=True, related_name='invigilations')
-    published = models.BooleanField(default=False)
+    exam_fee = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    published = models.BooleanField(default=False, help_text="Is the routine published?")
+    results_published = models.BooleanField(default=False, help_text="Are the results published?")
+    created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        ordering = ['date', 'start_time']
+        ordering = ['-created_at']
 
     def __str__(self):
-        return f"{self.title} - {self.class_assigned} ({self.date})"
+        return f"{self.title} - {self.class_assigned}"
+
+
+class ExamSchedule(models.Model):
+    """Schedule for a specific subject in an Exam"""
+    exam = models.ForeignKey(Exam, on_delete=models.CASCADE, related_name='schedules')
+    subject = models.ForeignKey(Subject, on_delete=models.CASCADE, related_name='exam_schedules')
+    date = models.DateField()
+    start_time = models.TimeField()
+    end_time = models.TimeField()
+    
+    class Meta:
+        ordering = ['date', 'start_time']
+        unique_together = ['exam', 'subject']
+
+    def __str__(self):
+        return f"{self.exam.title} - {self.subject.name} ({self.date})"

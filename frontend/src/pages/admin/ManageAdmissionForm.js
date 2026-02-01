@@ -1,3 +1,8 @@
+const DeprecatedManageAdmissionForm = () => null;
+
+export default DeprecatedManageAdmissionForm;
+
+/*
 import React, { useEffect, useMemo, useState, useCallback, useRef } from 'react';
 import {
   DndContext,
@@ -828,3 +833,4 @@ const ManageAdmissionForm = () => {
 };
 
 export default ManageAdmissionForm;
+*/

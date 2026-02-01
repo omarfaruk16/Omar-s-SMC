@@ -1,3 +1,8 @@
+const DeprecatedManageMarks = () => null;
+
+export default DeprecatedManageMarks;
+
+/*
 import React, { useEffect, useState } from 'react';
 import { markAPI, classAPI, subjectAPI, studentAPI } from '../../services/api';
 import { useToast } from '../../context/ToastContext';
@@ -78,4 +83,5 @@ const ManageMarks = () => {
 };
 
 export default ManageMarks;
+*/
 

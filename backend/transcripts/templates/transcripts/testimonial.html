@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <title>Testimonial</title>
+    <style>
+        @font-face {
+            font-family: 'Nikosh';
+            src: url('file://{{ font_path }}');
+            font-weight: normal;
+            font-style: normal;
+        }
+        @font-face {
+            font-family: 'Nikosh';
+            src: url('file://{{ font_bold_path }}');
+            font-weight: bold;
+            font-style: normal;
+        }
+        
+        @page {
+            size: A4 landscape;
+            margin: 10mm;
+            @top-center { content: none; }
+            @bottom-center { content: none; }
+        }
+
+        body {
+            font-family: 'Nikosh', sans-serif;
+            margin: 0;
+            padding: 0;
+            font-size: 14px;
+            line-height: 1.4;
+        }
+
+        .page-container {
+            display: flex;
+            flex-direction: row;
+            justify-content: space-between;
+            width: 100%;
+            height: 185mm;
+        }
+
+        .testimonial-box {
+            height: 100%;
+            box-sizing: border-box;
+            position: relative;
+        }
+
+        .testimonial-box.left {
+            width: 42%;
+        }
+
+        .testimonial-box.right {
+            width: 56%;
+        }
+
+        .border-dashed {
+            border: 3px dashed black;
+            padding: 4px;
+            height: 100%;
+            box-sizing: border-box;
+        }
+        
+        .border-solid {
+            border: 1px solid black;
+            height: 100%;
+            padding: 15px;
+            box-sizing: border-box;
+            position: relative;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 15px;
+        }
+        .college-name {
+            font-size: 22px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        .address, .established {
+            font-size: 13px;
+            margin: 2px 0;
+        }
+        .doc-title {
+            font-size: 26px;
+            font-weight: bold;
+            text-decoration: underline;
+            margin-top: 12px;
+            margin-bottom: 12px;
+        }
+
+        .meta-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 15px;
+            font-size: 14px;
+        }
+        .meta-left {
+            text-align: left;
+        }
+        .meta-right {
+            text-align: right;
+        }
+        .meta-item {
+            margin-bottom: 4px;
+        }
+
+        .content {
+            text-align: justify;
+            font-size: 15px;
+            font-weight: 600;
+            line-height: 1.45;
+            margin-bottom: 8px;
+        }
+        .content.intro {
+            margin-bottom: 10px;
+        }
+        .field {
+            font-weight: bold;
+            padding: 0 2px;
+        }
+        .dotted-line {
+            border-bottom: 1px dotted #000;
+            display: inline-block;
+            min-width: 150px;
+            padding-bottom: 2px;
+        }
+        .name-line {
+            display: block;
+            margin: 8px 0;
+        }
+        .half-row {
+            display: flex;
+            justify-content: space-between;
+            margin: 6px 0;
+        }
+        .half-item {
+            width: 48%;
+        }
+
+        .footer {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 40px;
+            align-items: flex-end;
+            position: absolute;
+            bottom: 20px;
+            width: calc(100% - 30px);
+        }
+        .signature-block {
+            text-align: center;
+            width: 30%;
+            font-weight: 600;
+        }
+        .signature-line {
+            margin-top: 5px;
+        }
+
+    </style>
+</head>
+<body>
+    <div class="page-container">
+        <!-- LEFT BOX (Template) -->
+        <div class="testimonial-box left">
+            <div class="border-dashed">
+                <div class="border-solid">
+                    
+                    <div class="header">
+                        <div class="college-name">রোজী মোজাম্মেল মহিলা কলেজ</div>
+                        <div class="address">ডাকঘর-হাট গুরুদাসপুর, উপজেলা-গুরুদাসপুর</div>
+                        <div class="address">জেলা-নাটোর।</div>
+                        <div class="doc-title">প্রশংসা পত্র</div>
+                    </div>
+
+                    <div class="meta-row">
+                        <div class="meta-left">
+                            <div class="meta-item">ক্রমিক নং- <span class="dotted-line" style="min-width: 80px;"></span></div>
+                        </div>
+                        <div class="meta-right">
+                            <div class="meta-item">তারিখ ঃ <span class="dotted-line" style="min-width: 100px;"></span></div>
+                        </div>
+                    </div>
+
+                    <div class="meta-row" style="margin-top: -10px;">
+                        <div class="meta-left" style="width: 100%;">
+                            <div class="meta-item">রোল নং: <span class="dotted-line" style="min-width: 100px;"></span></div>
+                            <div class="meta-item">রেজিঃ নং: <span class="dotted-line" style="min-width: 100px;"></span></div>
+                            <div class="meta-item">শিক্ষাবর্ষ: <span class="dotted-line" style="min-width: 100px;"></span></div>
+                        </div>
+                    </div>
+
+                    <div class="content intro">
+                        এই মর্মে সানদে প্রত্যয়ন করিতেছি যে,
+                    </div>
+
+                    <div class="content">
+                        <span class="name-line">নাম (বাংলায়): <span class="dotted-line" style="min-width: 200px;"></span></span>
+                    </div>
+
+                    <div class="content">
+                        <span class="name-line">(ইংরেজীতে) <span class="dotted-line" style="min-width: 200px;"></span></span>
+                    </div>
+
+                    <div class="content">
+                        পিতা: <span class="dotted-line" style="min-width: 180px;"></span>
+                    </div>
+
+                    <div class="content">
+                        মাতা: <span class="dotted-line" style="min-width: 180px;"></span>
+                    </div>
+
+                    <div class="half-row">
+                        <div class="half-item" style="font-size: 15px; font-weight: 600;">
+                            গ্রাম: <span class="dotted-line" style="min-width: 80px;"></span>
+                        </div>
+                        <div class="half-item" style="font-size: 15px; font-weight: 600;">
+                            ডাকঘর: <span class="dotted-line" style="min-width: 80px;"></span>
+                        </div>
+                    </div>
+
+                    <div class="half-row">
+                        <div class="half-item" style="font-size: 15px; font-weight: 600;">
+                            উপজেলা: <span class="dotted-line" style="min-width: 70px;"></span>
+                        </div>
+                        <div class="half-item" style="font-size: 15px; font-weight: 600;">
+                            জেলা: <span class="dotted-line" style="min-width: 80px;"></span>
+                        </div>
+                    </div>
+
+                    <div class="content" style="margin-top: 12px;">
+                        অত্র কলেজের একজন নিয়মিত/অনিয়মিত ছাত্রী ছিল। সে মাধ্যমিক ও উচ্চ মাধ্যমিক শিক্ষা বোর্ড রাজশাহী এর আওতাধীন <span class="dotted-line" style="min-width: 60px;"></span> সালের এইচ.এস.সি পরীক্ষায় মানবিক শাখা হইতে জিপিএ <span class="dotted-line" style="min-width: 40px;"></span> (৫.০০) প্রাপ্ত হইয়া উত্তীর্ণ হইয়াছে। সংরক্ষিত নথিপত্র/ভর্তি বহি অনুসারে তাহার জন্ম তারিখ <span class="dotted-line" style="min-width: 100px;"></span>, (কথায়ঃ <span class="dotted-line" style="min-width: 100px;"></span>)।
+                    </div>
+
+                    <div class="content" style="margin-top: 8px;">
+                        অত্র কলেজে অধ্যয়নকালে সে আইন-শৃঙ্খলা ভঙ্গ করে নাই এবং রাষ্ট্র বিরোধী কোন কাজে জড়িত ছিল না। আমার জানামতে সে উত্তম চরিত্রের অধিকারী। আমি তাহার উজ্জ্বল ভবিষ্যৎ ও সার্বিক মঙ্গল কামনা করি।
+                    </div>
+
+                    <div class="footer">
+                        <div class="signature-block">
+                            <div class="signature-line">প্রস্তুতকারী</div>
+                            <div style="font-size: 12px; margin-top: 2px;">তারিখঃ</div>
+                        </div>
+                        <div class="signature-block">
+                            <div class="signature-line">যাচাইকারী</div>
+                        </div>
+                        <div class="signature-block">
+                            <div class="signature-line">অধ্যক্ষের স্বাক্ষর</div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+        <!-- RIGHT BOX (Filled) -->
+        <div class="testimonial-box right">
+            <div class="border-dashed">
+                <div class="border-solid">
+                    
+                    <div class="header">
+                        <div class="college-name">রোজী মোজাম্মেল মহিলা কলেজ</div>
+                        <div class="address">ডাকঘর-হাট গুরুদাসপুর, উপজেলা-গুরুদাসপুর</div>
+                        <div class="address">জেলা-নাটোর।</div>
+                        <div class="established">স্থাপিত-১৯৯৪ ইং <span style="margin-left: 30px;">বোর্ড- ১৯১২৬৭৮০৭২</span></div>
+                        <div class="established">মোবাইল- ০১৭১৬৭৯১২ <span style="margin-left: 20px;">শিক্ষাবর্ষ- ২০২২-২০২৩</span></div>
+                        <div class="doc-title">প্রশংসা পত্র</div>
+                    </div>
+
+                    <div class="meta-row">
+                        <div class="meta-left">
+                            <div class="meta-item">ক্রমিক নং- <span class="field">{{ form.serial_no }}</span></div>
+                        </div>
+                        <div class="meta-right">
+                            <div class="meta-item">তারিখ ঃ {{ form.issue_date }}ইং</div>
+                            <div class="meta-item">রোল নং- {% if form.roll %}<span class="field">{{ form.roll }}</span>{% else %}<span class="dotted-line" style="min-width: 60px;"></span>{% endif %}</div>
+                            <div class="meta-item">রেজিঃ নং- {% if form.registration_no %}<span class="field">{{ form.registration_no }}</span>{% else %}<span class="dotted-line" style="min-width: 60px;"></span>{% endif %}</div>
+                            <div class="meta-item">শিক্ষাবর্ষ- {% if form.session %}<span class="field">{{ form.session }}</span>{% else %}<span class="dotted-line" style="min-width: 60px;"></span>{% endif %}</div>
+                        </div>
+                    </div>
+
+                    <div class="content intro">
+                        এই মর্মে সানদে প্রত্যয়ন করিতেছি যে, 
+                    </div>
+
+                    <div class="content">
+                        <span class="name-line">নাম (বাংলায়): {% if form.name_bn %}<span class="field">{{ form.name_bn }}</span>{% else %}<span class="dotted-line" style="min-width: 200px;"></span>{% endif %}</span>
+                    </div>
+
+                    <div class="content">
+                        <span class="name-line">(ইংরেজীতে) {% if form.name_en %}<span class="field">Mst. {{ form.name_en }}</span>{% else %}<span class="dotted-line" style="min-width: 200px;"></span>{% endif %}</span>
+                    </div>
+
+                    <div class="content">
+                        পিতাঃ {% if form.father_bn %}{{ form.father_bn }}{% else %}<span class="dotted-line" style="min-width: 180px;"></span>{% endif %}
+                    </div>
+
+                    <div class="content">
+                        মাতাঃ {% if form.mother_bn %}{{ form.mother_bn }}{% else %}<span class="dotted-line" style="min-width: 180px;"></span>{% endif %}
+                    </div>
+
+                    <div class="half-row">
+                        <div class="half-item" style="font-size: 15px; font-weight: 600;">
+                            গ্রামঃ {% if form.village %}{{ form.village }}{% else %}<span class="dotted-line" style="min-width: 80px;"></span>{% endif %}
+                        </div>
+                        <div class="half-item" style="font-size: 15px; font-weight: 600;">
+                            ডাকঘরঃ {% if form.post_office %}{{ form.post_office }}{% else %}<span class="dotted-line" style="min-width: 80px;"></span>{% endif %}
+                        </div>
+                    </div>
+
+                    <div class="half-row">
+                        <div class="half-item" style="font-size: 15px; font-weight: 600;">
+                            উপজেলাঃ {% if form.upazila %}{{ form.upazila }}{% else %}<span class="dotted-line" style="min-width: 70px;"></span>{% endif %}
+                        </div>
+                        <div class="half-item" style="font-size: 15px; font-weight: 600;">
+                            জেলাঃ {% if form.district %}{{ form.district }}{% else %}<span class="dotted-line" style="min-width: 80px;"></span>{% endif %}
+                        </div>
+                    </div>
+
+                    <div class="content" style="margin-top: 12px;">
+                        অত্র কলেজের একজন নিয়মিত/অনিয়মিত ছাত্রী ছিল। সে মাধ্যমিক ও উচ্চ মাধ্যমিক শিক্ষা বোর্ড রাজশাহী এর আওতাধীন {{ form.exam_year }} সালের এইচ.এস.সি পরীক্ষায় মানবিক শাখা হইতে জিপিএ <span class="field">{{ form.gpa }}</span> (৫.০০) প্রাপ্ত হইয়া উত্তীর্ণ হইয়াছে। সংরক্ষিত নথিপত্র/ভর্তি বহি অনুসারে তাহার জন্ম তারিখ {{ form.dob_numeric }}, (কথায়ঃ {{ form.dob_words }})।
+                    </div>
+
+                    <div class="content" style="margin-top: 8px;">
+                        অত্র কলেজে অধ্যয়নকালে সে আইন-শৃঙ্খলা ভঙ্গ করে নাই এবং রাষ্ট্র বিরোধী কোন কাজে জড়িত ছিল না। আমার জানামতে সে উত্তম চরিত্রের অধিকারী। আমি তাহার উজ্জ্বল ভবিষ্যৎ ও সার্বিক মঙ্গল কামনা করি।
+                    </div>
+
+                    <div class="footer">
+                        <div class="signature-block">
+                            <div class="signature-line">প্রস্তুতকারী</div>
+                            <div style="font-size: 12px; margin-top: 2px;">তারিখঃ {{ form.issue_date }}ইং</div>
+                        </div>
+                        <div class="signature-block">
+                            <div class="signature-line">যাচাইকারী</div>
+                        </div>
+                        <div class="signature-block">
+                            <div class="signature-line">অধ্যক্ষের স্বাক্ষর</div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

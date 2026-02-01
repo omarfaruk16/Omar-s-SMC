@@ -5,6 +5,26 @@ const ToastContext = createContext(null);
 export const ToastProvider = ({ children }) => {
   const [toasts, setToasts] = useState([]);
 
+  const normalizeError = useCallback((input, fallback = 'Something went wrong.') => {
+    if (!input) return fallback;
+    if (typeof input === 'string') return input;
+    if (input.response?.data) {
+      const data = input.response.data;
+      if (typeof data === 'string') return data;
+      if (data.detail) return data.detail;
+      if (data.error) return data.error;
+      if (data.message) return data.message;
+      const firstKey = Object.keys(data)[0];
+      if (firstKey) {
+        const value = data[firstKey];
+        if (Array.isArray(value) && value.length > 0) return value[0];
+        if (typeof value === 'string') return value;
+      }
+    }
+    if (input.message) return input.message;
+    return fallback;
+  }, []);
+
   const remove = useCallback((id) => {
     setToasts((t) => t.filter((x) => x.id !== id));
   }, []);
@@ -17,7 +37,8 @@ export const ToastProvider = ({ children }) => {
 
   const api = {
     success: (msg, ttl) => push(msg, 'success', ttl),
-    error: (msg, ttl) => push(msg, 'error', ttl),
+    error: (msg, ttl) => push(normalizeError(msg), 'error', ttl),
+    errorFrom: (err, fallback, ttl) => push(normalizeError(err, fallback), 'error', ttl),
     info: (msg, ttl) => push(msg, 'info', ttl),
   };
 

@@ -1,14 +1,14 @@
 from django.urls import include, path
 from rest_framework.routers import DefaultRouter
 
-from .views import TranscriptRequestViewSet, TranscriptInitView, TranscriptIPNView, TranscriptReturnView
+from .views import TestimonialRequestViewSet, TestimonialInitView, TestimonialIPNView, TestimonialReturnView
 
 router = DefaultRouter()
-router.register(r'transcripts', TranscriptRequestViewSet, basename='transcript')
+router.register(r'testimonials', TestimonialRequestViewSet, basename='testimonial')
 
 urlpatterns = [
-    path('transcripts/sslcommerz/init/', TranscriptInitView.as_view(), name='transcript-sslcommerz-init'),
-    path('transcripts/sslcommerz/ipn/', TranscriptIPNView.as_view(), name='transcript-sslcommerz-ipn'),
-    path('transcripts/sslcommerz/return/', TranscriptReturnView.as_view(), name='transcript-sslcommerz-return'),
+    path('testimonials/sslcommerz/init/', TestimonialInitView.as_view(), name='testimonial-sslcommerz-init'),
+    path('testimonials/sslcommerz/ipn/', TestimonialIPNView.as_view(), name='testimonial-sslcommerz-ipn'),
+    path('testimonials/sslcommerz/return/', TestimonialReturnView.as_view(), name='testimonial-sslcommerz-return'),
     path('', include(router.urls)),
 ]

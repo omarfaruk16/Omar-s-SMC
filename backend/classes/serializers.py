@@ -9,7 +9,7 @@ class ClassSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Class
-        fields = ['id', 'name', 'section', 'student_count', 'teacher_count']
+        fields = ['id', 'name', 'section', 'session', 'student_count', 'teacher_count']
     
     def get_student_count(self, obj):
         return obj.students.count()

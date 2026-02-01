@@ -37,6 +37,21 @@ const StudentDashboard = () => {
     attendanceRate: 0
   });
   const header = useMemo(() => new Date(year, month, 1).toLocaleString('en-US', { month: 'long', year: 'numeric' }), [year, month]);
+  const examScheduleEntries = useMemo(() => {
+    const entries = [];
+    (exams || []).forEach((exam) => {
+      (exam.schedules || []).forEach((sch) => {
+        entries.push({
+          ...sch,
+          exam_id: exam.id,
+          title: exam.title,
+          class_assigned: exam.class_assigned,
+        });
+      });
+    });
+    return entries;
+  }, [exams]);
+
   const groupedResults = useMemo(() => {
     const groups = {};
     (publishedMarks || []).forEach((mark) => {
@@ -77,7 +92,7 @@ const StudentDashboard = () => {
           totalClasses,
           attendanceRate
         }));
-      } catch (e) { console.error(e); toast.error('Failed to load attendance'); }
+      } catch (e) { console.error(e); toast.errorFrom(e, 'Failed to load attendance'); }
     })();
     (async () => {
       try {
@@ -88,11 +103,20 @@ const StudentDashboard = () => {
     (async () => {
       try {
         const res = await examAPI.getAll({ date_from, date_to });
-        setExams(res.data);
+        const examData = res.data || [];
+        setExams(examData);
 
-        // Count upcoming exams
-        const upcomingExams = res.data.filter(e => new Date(e.date) >= new Date()).length;
-        setStats(prev => ({ ...prev, upcomingExams }));
+        const todayStr = new Date().toISOString().slice(0, 10);
+        const upcomingIds = new Set();
+        examData.forEach((exam) => {
+          (exam.schedules || []).forEach((sch) => {
+            if (sch.date && sch.date >= todayStr) {
+              upcomingIds.add(exam.id);
+            }
+          });
+        });
+
+        setStats(prev => ({ ...prev, upcomingExams: upcomingIds.size }));
       } catch (e) { console.error(e); }
     })();
     (async () => {
@@ -110,7 +134,7 @@ const StudentDashboard = () => {
         }
       } catch (e) { console.error(e); }
     })();
-  }, [year, month, toast]);
+  }, [year, month]);
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -166,7 +190,7 @@ const StudentDashboard = () => {
       window.URL.revokeObjectURL(url);
     } catch (error) {
       console.error('Failed to download admission form', error);
-      toast.error('Unable to download your admission form right now.');
+      toast.errorFrom(error, 'Unable to download your admission form right now.');
     } finally {
       setDownloadingAdmissionForm(false);
     }
@@ -188,7 +212,7 @@ const StudentDashboard = () => {
       window.URL.revokeObjectURL(url);
     } catch (error) {
       console.error('Failed to download admit card', error);
-      toast.error('Unable to download admit card right now.');
+      toast.errorFrom(error, 'Unable to download admit card right now.');
     } finally {
       setDownloadingAdmitCard('');
     }
@@ -197,7 +221,8 @@ const StudentDashboard = () => {
   const menuItems = useMemo(() => [
     { key: 'materials', title: 'Study Materials', path: '/student/materials', icon: '📚', description: 'Access class materials and resources', color: 'from-blue-500 to-blue-600' },
     { key: 'fees', title: 'Fees & Payments', path: '/student/fees', icon: '💰', description: 'View and pay your fees', color: 'from-green-500 to-emerald-600' },
-    { key: 'transcripts', title: 'Transcript Request', path: '/student/transcripts', icon: 'TR', description: 'Request your transcript', color: 'from-indigo-500 to-indigo-600' },
+    { key: 'exams-results', title: 'Exams & Results', path: '/student/exams', icon: '🧾', description: 'View exams, results, and payments', color: 'from-rose-500 to-pink-600' },
+    { key: 'testimonials', title: 'Testimonial Request', path: '/student/testimonials', icon: 'TM', description: 'Request your testimonial', color: 'from-indigo-500 to-indigo-600' },
     { key: 'attendance', title: 'Attendance', path: '/student/attendance', icon: '✅', description: 'View your attendance', color: 'from-purple-500 to-indigo-600' },
     { key: 'timetable', title: 'Timetable', path: '/student/timetable', icon: '🗓️', description: 'View class timetable', color: 'from-orange-500 to-amber-600' },
     {
@@ -223,12 +248,12 @@ const StudentDashboard = () => {
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-lg p-6 text-white">
+          <Link to="/student/timetable" className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-lg p-6 text-white hover:shadow-xl transform hover:scale-105 transition-all duration-200 cursor-pointer">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-blue-100 text-sm font-medium mb-1">Total Classes</p>
                 <p className="text-4xl font-bold">{stats.totalClasses}</p>
-                <p className="text-blue-100 text-xs mt-2">This month</p>
+                <p className="text-blue-100 text-xs mt-2">View schedule</p>
               </div>
               <div className="bg-white bg-opacity-20 p-4 rounded-lg">
                 <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -236,9 +261,9 @@ const StudentDashboard = () => {
                 </svg>
               </div>
             </div>
-          </div>
+          </Link>
 
-          <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-xl shadow-lg p-6 text-white">
+          <Link to="/student/attendance" className="bg-gradient-to-br from-green-500 to-green-600 rounded-xl shadow-lg p-6 text-white hover:shadow-xl transform hover:scale-105 transition-all duration-200 cursor-pointer">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-green-100 text-sm font-medium mb-1">Attendance Rate</p>
@@ -251,14 +276,14 @@ const StudentDashboard = () => {
                 </svg>
               </div>
             </div>
-          </div>
+          </Link>
 
-          <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl shadow-lg p-6 text-white">
+          <Link to="/student/exams" className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl shadow-lg p-6 text-white hover:shadow-xl transform hover:scale-105 transition-all duration-200 cursor-pointer">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-purple-100 text-sm font-medium mb-1">Upcoming Exams</p>
                 <p className="text-4xl font-bold">{stats.upcomingExams}</p>
-                <p className="text-purple-100 text-xs mt-2">Scheduled exams</p>
+                <p className="text-purple-100 text-xs mt-2">View all exams</p>
               </div>
               <div className="bg-white bg-opacity-20 p-4 rounded-lg">
                 <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -266,14 +291,14 @@ const StudentDashboard = () => {
                 </svg>
               </div>
             </div>
-          </div>
+          </Link>
 
-          <div className="bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl shadow-lg p-6 text-white">
+          <Link to="/student/exams/results" className="bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl shadow-lg p-6 text-white hover:shadow-xl transform hover:scale-105 transition-all duration-200 cursor-pointer">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-orange-100 text-sm font-medium mb-1">Average Score</p>
                 <p className="text-4xl font-bold">{stats.avgMarks}%</p>
-                <p className="text-orange-100 text-xs mt-2">Recent exams</p>
+                <p className="text-orange-100 text-xs mt-2">View results</p>
               </div>
               <div className="bg-white bg-opacity-20 p-4 rounded-lg">
                 <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -282,7 +307,7 @@ const StudentDashboard = () => {
                 </svg>
               </div>
             </div>
-          </div>
+          </Link>
         </div>
 
         {/* Calendar overview */}
@@ -299,7 +324,7 @@ const StudentDashboard = () => {
                 const isCurrentMonth = date.getMonth() === month;
                 const dstr = date.toISOString().slice(0,10);
                 const rec = records.find(r => r.date === dstr);
-                const dayExams = exams.filter(e => e.date === dstr);
+                const dayExams = examScheduleEntries.filter(e => e.date === dstr);
                 const weekday = date.getDay() === 0 ? 6 : date.getDay()-1;
                 const daySlots = slots.filter(s => s.weekday === weekday);
                 return (
@@ -364,95 +389,6 @@ const StudentDashboard = () => {
           </div>
         </div>
 
-        {/* Performance Chart */}
-        <div className="mb-8 bg-white rounded-xl shadow-md p-6">
-          <h2 className="text-xl font-bold mb-4">Recent Performance</h2>
-          <div className="space-y-3">
-            {recentMarks.length === 0 ? (
-              <p className="text-gray-500 text-center py-8">No marks published yet</p>
-            ) : (
-              recentMarks.map((mark, idx) => {
-                const percentage = (mark.score / mark.max_score) * 100;
-                return (
-                  <div key={mark.id} className="flex items-center space-x-4">
-                    <div className="flex-shrink-0 w-12 h-12 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold">
-                      {idx + 1}
-                    </div>
-                    <div className="flex-grow">
-                      <div className="flex items-center justify-between mb-1">
-                        <div>
-                          <p className="font-semibold text-gray-900">{mark.subject_name}</p>
-                          <p className="text-xs text-gray-500">{mark.exam_name}</p>
-                        </div>
-                        <span className="font-bold text-lg">{mark.score}/{mark.max_score}</span>
-                      </div>
-                      <div className="w-full bg-gray-200 rounded-full h-2">
-                        <div
-                          className={`h-2 rounded-full ${
-                            percentage >= 80 ? 'bg-gradient-to-r from-green-400 to-green-600' :
-                            percentage >= 60 ? 'bg-gradient-to-r from-blue-400 to-blue-600' :
-                            percentage >= 40 ? 'bg-gradient-to-r from-yellow-400 to-yellow-600' :
-                            'bg-gradient-to-r from-red-400 to-red-600'
-                          }`}
-                          style={{ width: `${percentage}%` }}
-                        ></div>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })
-            )}
-          </div>
-        </div>
-
-        <div className="mb-8 bg-white rounded-xl shadow-md p-6">
-          <h2 className="text-xl font-bold mb-4">Published Results</h2>
-          {groupedResults.length === 0 ? (
-            <p className="text-gray-500 text-center py-8">No published results yet</p>
-          ) : (
-            <div className="space-y-6">
-              {groupedResults.map((group) => {
-                const totals = group.marks.reduce(
-                  (acc, mark) => ({
-                    score: acc.score + (Number(mark.score) || 0),
-                    max: acc.max + (Number(mark.max_score) || 0),
-                  }),
-                  { score: 0, max: 0 }
-                );
-                const percentage = totals.max ? Math.round((totals.score / totals.max) * 100) : 0;
-                return (
-                  <div key={group.examName} className="border border-gray-200 rounded-lg p-4">
-                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
-                      <div>
-                        <h3 className="font-semibold text-gray-900">{group.examName}</h3>
-                        <p className="text-xs text-gray-500">
-                          {group.date ? new Date(group.date).toLocaleDateString() : 'Result published'}
-                        </p>
-                      </div>
-                      <div className="text-sm text-gray-700 font-medium">
-                        Total: {totals.score}/{totals.max} ({percentage}%)
-                      </div>
-                    </div>
-                    <div className="divide-y">
-                      {group.marks.map((mark) => {
-                        const percent = mark.max_score ? Math.round((mark.score / mark.max_score) * 100) : 0;
-                        return (
-                          <div key={mark.id} className="flex items-center justify-between py-2 text-sm">
-                            <div className="font-medium text-gray-800">{mark.subject_name}</div>
-                            <div className="text-gray-600">
-                              {mark.score}/{mark.max_score} ({percent}%)
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-
         {/* Action Cards with Modern Design */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {menuItems.map((item) => {
@@ -512,7 +448,7 @@ const StudentDashboard = () => {
         const rec = records.find(r => r.date === dstr);
         const weekday = modalDate.getDay() === 0 ? 6 : modalDate.getDay()-1;
         const daySlots = slots.filter(s => s.weekday === weekday);
-        const dayExams = exams.filter(e => e.date === dstr);
+        const dayExams = examScheduleEntries.filter(e => e.date === dstr);
         const examGroups = dayExams.reduce((acc, exam) => {
           const key = `${exam.title}-${exam.class_assigned}`;
           if (!acc[key]) {
@@ -580,8 +516,8 @@ const StudentDashboard = () => {
       <div className="space-y-4">
         <p className="text-sm text-gray-700">
           {paymentStatus === 'success'
-            ? `Your ${paymentSource === 'transcript' ? 'transcript request' : 'fee'} payment has been completed successfully.`
-            : `Your ${paymentSource === 'transcript' ? 'transcript request' : 'fee'} payment could not be completed. Please try again.`}
+            ? `Your ${paymentSource === 'testimonial' ? 'testimonial request' : 'fee'} payment has been completed successfully.`
+            : `Your ${paymentSource === 'testimonial' ? 'testimonial request' : 'fee'} payment could not be completed. Please try again.`}
         </p>
         <div className="flex justify-end">
           <button

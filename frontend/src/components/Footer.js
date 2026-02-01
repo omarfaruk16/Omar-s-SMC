@@ -15,7 +15,7 @@ const Footer = () => {
                 <img 
                   src="/rozey-mozammel-womens-college-logo.png" 
                   alt="School Logo" 
-                  className="w-full h-full object-contain"
+                  className="w-full h-full object-contain rounded-full"
                   onError={(e) => {
                     e.target.src = "https://via.placeholder.com/64x64/22c55e/ffffff?text=SMS";
                   }}

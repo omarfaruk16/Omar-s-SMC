@@ -5,6 +5,7 @@ from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 from urllib.request import urlopen, Request
 
 from django.conf import settings
+from django.db import models
 from django.http import HttpResponseRedirect
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
@@ -88,6 +89,7 @@ def _approve_fee_intent(intent: FeePaymentIntent, validation_data: dict, ipn_pay
     payment = Payment.objects.create(
         student=intent.student,
         fee=intent.fee,
+        exam=intent.fee.exam, # Link exam if available
         method='sslcommerz',
         transaction_id=intent.transaction_id,
         status='approved',
@@ -95,6 +97,11 @@ def _approve_fee_intent(intent: FeePaymentIntent, validation_data: dict, ipn_pay
         approved_date=timezone.now(),
         gateway_payload=gateway_payload,
     )
+    
+    # Update fee status if this is a per-student fee
+    if intent.fee.student:
+        intent.fee.status = 'paid'
+        intent.fee.save(update_fields=['status'])
 
     intent.status = 'paid'
     intent.paid_at = timezone.now()
@@ -133,7 +140,9 @@ class FeeViewSet(viewsets.ModelViewSet):
             try:
                 student = user.student_profile
                 if student.student_class:
-                    return Fee.objects.filter(class_assigned=student.student_class)
+                    qs = Fee.objects.filter(class_assigned=student.student_class)
+                    # Filter fees assigned specifically to this student or class-wide fees (no student assigned)
+                    return qs.filter(models.Q(student=student) | models.Q(student__isnull=True))
             except:
                 pass
         
@@ -210,6 +219,7 @@ class FeeViewSet(viewsets.ModelViewSet):
                 return Response([])
             
             fees = Fee.objects.filter(class_assigned=student.student_class)
+            fees = fees.filter(models.Q(student=student) | models.Q(student__isnull=True))
             
             fee_data = []
             for fee in fees:
@@ -223,6 +233,7 @@ class FeeViewSet(viewsets.ModelViewSet):
                     'fee_status': fee.status,
                     'fee_type': fee.fee_type,
                     'class_id': fee.class_assigned_id,
+                    'exam_id': fee.exam_id,
                     'exam_title': (
                         fee.exam.title
                         if fee.exam
@@ -291,7 +302,7 @@ class PaymentViewSet(viewsets.ModelViewSet):
         fee_id = request.data.get('fee')
         try:
             fee = Fee.objects.get(id=fee_id)
-            if fee.status != 'running':
+            if fee.status not in ['running', 'pending']:
                 return Response(
                     {'error': 'This fee is not available for payment'},
                     status=status.HTTP_400_BAD_REQUEST
@@ -339,6 +350,10 @@ class PaymentViewSet(viewsets.ModelViewSet):
         payment.status = 'approved'
         payment.approved_date = timezone.now()
         payment.save()
+
+        if payment.fee and payment.fee.student:
+            payment.fee.status = 'paid'
+            payment.fee.save(update_fields=['status'])
         
         return Response({'message': 'Payment approved successfully'})
     
@@ -403,7 +418,7 @@ class SSLCommerzInitView(APIView):
 
         try:
             fee = Fee.objects.get(id=fee_id)
-            if fee.status != 'running':
+            if fee.status not in ['running', 'pending']:
                 return Response({'error': 'This fee is not available for payment'}, status=status.HTTP_400_BAD_REQUEST)
         except Fee.DoesNotExist:
             return Response({'error': 'Fee not found'}, status=status.HTTP_404_NOT_FOUND)

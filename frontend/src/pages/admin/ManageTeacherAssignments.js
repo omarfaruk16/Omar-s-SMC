@@ -211,23 +211,14 @@ const ManageTeacherAssignments = () => {
                         {newAssignments.map((assignment, index) => (
                           <div key={index} className="grid grid-cols-1 md:grid-cols-3 gap-3 items-end p-3 bg-white rounded-lg border">
                             <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-1">Subject *</label>
-                              <select
-                                value={assignment.subject_id}
-                                onChange={(e) => updateNewAssignment(index, 'subject_id', e.target.value)}
-                                className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                              >
-                                <option value="">Select subject...</option>
-                                {subjects.map(s => (
-                                  <option key={s.id} value={s.id}>{s.name}</option>
-                                ))}
-                              </select>
-                            </div>
-                            <div>
                               <label className="block text-sm font-medium text-gray-700 mb-1">Class *</label>
                               <select
                                 value={assignment.class_id}
-                                onChange={(e) => updateNewAssignment(index, 'class_id', e.target.value)}
+                                onChange={(e) => {
+                                   updateNewAssignment(index, 'class_id', e.target.value);
+                                   // Reset subject if class changes, as the subject might not be valid for the new class
+                                   updateNewAssignment(index, 'subject_id', ''); 
+                                }}
                                 className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                               >
                                 <option value="">Select class...</option>
@@ -235,6 +226,23 @@ const ManageTeacherAssignments = () => {
                                   <option key={c.id} value={c.id}>
                                     {c.name}{c.section ? ` - ${c.section}` : ''}
                                   </option>
+                                ))}
+                              </select>
+                            </div>
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">Subject *</label>
+                              <select
+                                value={assignment.subject_id}
+                                onChange={(e) => updateNewAssignment(index, 'subject_id', e.target.value)}
+                                className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                                disabled={!assignment.class_id}
+                              >
+                                <option value="">{assignment.class_id ? 'Select subject...' : 'Select class first...'}</option>
+                                {(assignment.class_id 
+                                  ? subjects.filter(s => s.class_assigned === Number(assignment.class_id)) 
+                                  : []
+                                ).map(s => (
+                                  <option key={s.id} value={s.id}>{s.name}</option>
                                 ))}
                               </select>
                             </div>

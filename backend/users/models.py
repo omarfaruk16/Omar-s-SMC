@@ -71,12 +71,55 @@ class Teacher(models.Model):
 class Student(models.Model):
     """Student profile model"""
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='student_profile')
-    student_class = models.ForeignKey('classes.Class', on_delete=models.SET_NULL, null=True, related_name='students')
+    student_class = models.ForeignKey('classes.Class', on_delete=models.SET_NULL, null=True, blank=True, related_name='students')
     roll_number = models.CharField(max_length=30, blank=True, null=True)
+    
+    # Academic Information
+    registration = models.CharField(max_length=50, blank=True, null=True, verbose_name='Registration Number')
+    session = models.CharField(max_length=20, blank=True, null=True, verbose_name='Academic Session')
+    
+    # Personal Information
+    bangla_name = models.CharField(max_length=200, blank=True, null=True, verbose_name='Name in Bangla')
     date_of_birth = models.DateField(null=True, blank=True)
+    birth_registration_number = models.CharField(max_length=50, blank=True, null=True)
+    gender = models.CharField(max_length=10, choices=[('male', 'Male'), ('female', 'Female'), ('other', 'Other')], blank=True, null=True)
+    religion = models.CharField(max_length=50, blank=True, null=True)
+    blood_group = models.CharField(max_length=5, blank=True, null=True)
+    nationality = models.CharField(max_length=50, default='Bangladeshi')
+    
+    # Address Information
     address = models.TextField(blank=True, null=True)
+    permanent_address = models.TextField(blank=True, null=True)
+    village = models.CharField(max_length=100, blank=True, null=True, verbose_name='Village')
+    post_office = models.CharField(max_length=100, blank=True, null=True, verbose_name='Post Office')
+    post_code = models.CharField(max_length=10, blank=True, null=True)
+    upazilla_thana = models.CharField(max_length=100, blank=True, null=True)
+    district = models.CharField(max_length=100, blank=True, null=True)
+    
+    # Family Information
+    fathers_name = models.CharField(max_length=100, blank=True, null=True)
+    fathers_nid = models.CharField(max_length=20, blank=True, null=True)
+    fathers_occupation = models.CharField(max_length=100, blank=True, null=True)
+    mothers_name = models.CharField(max_length=100, blank=True, null=True)
+    mothers_nid = models.CharField(max_length=20, blank=True, null=True)
+    mothers_occupation = models.CharField(max_length=100, blank=True, null=True)
     guardian_name = models.CharField(max_length=100, blank=True, null=True)
     guardian_phone = models.CharField(max_length=20, blank=True, null=True)
+    guardian_monthly_income = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True)
+    
+    # Academic History (SSC/Equivalent)
+    ssc_board = models.CharField(max_length=100, blank=True, null=True)
+    ssc_registration_no = models.CharField(max_length=50, blank=True, null=True)
+    ssc_group = models.CharField(max_length=50, blank=True, null=True)
+    ssc_roll_number = models.CharField(max_length=50, blank=True, null=True)
+    ssc_year_of_passing = models.IntegerField(blank=True, null=True)
+    ssc_gpa = models.DecimalField(max_digits=4, decimal_places=2, blank=True, null=True)
+    
+    # Subject Selections
+    first_subject = models.ForeignKey('academics.Subject', on_delete=models.SET_NULL, null=True, blank=True, related_name='students_first')
+    second_subject = models.ForeignKey('academics.Subject', on_delete=models.SET_NULL, null=True, blank=True, related_name='students_second')
+    third_subject = models.ForeignKey('academics.Subject', on_delete=models.SET_NULL, null=True, blank=True, related_name='students_third')
+    fourth_subject = models.ForeignKey('academics.Subject', on_delete=models.SET_NULL, null=True, blank=True, related_name='students_fourth')
     
     class Meta:
         ordering = ['user__first_name']

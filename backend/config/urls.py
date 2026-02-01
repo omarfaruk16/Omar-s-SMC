@@ -18,6 +18,8 @@ from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
+from django.views.static import serve
+from django.urls import re_path
 from rest_framework_simplejwt.views import TokenRefreshView
 from users.authentication import CustomTokenObtainPairView
 from users.views import ForgotPasswordView, VerifyOTPView, ResetPasswordView
@@ -48,7 +50,12 @@ urlpatterns = [
     path('api/notifications/', include('notifications.urls')),
 ]
 
-# Serve media files in development
+# Serve media files
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
     urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
+elif getattr(settings, 'SERVE_MEDIA', False):
+    urlpatterns += [
+        re_path(r'^media/(?P<path>.*)$', serve, {'document_root': settings.MEDIA_ROOT}),
+        re_path(r'^django-static/(?P<path>.*)$', serve, {'document_root': settings.STATIC_ROOT}),
+    ]

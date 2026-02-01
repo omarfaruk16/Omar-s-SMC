@@ -14,23 +14,20 @@ const TeacherRegister = () => {
     nid: '',
     teacher_id: '',
     designation: '',
-    class_id: '',
-    subject_id: '',
-    date_of_birth: '',
-    // index_num: '',
-    // designation: '',
-    // date_of_birth: '',
   });
+  const [classSubjectAssignments, setClassSubjectAssignments] = useState([]);
+  const [currentAssignment, setCurrentAssignment] = useState({ class_id: '', subject_id: '' });
+  const [profileImage, setProfileImage] = useState(null);
+  const [profileImagePreview, setProfileImagePreview] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [classes, setClasses] = useState([]);
   const [subjects, setSubjects] = useState([]);
-  const [filteredSubjects, setFilteredSubjects] = useState([]);
   const [optionsLoading, setOptionsLoading] = useState(true);
   const [optionsError, setOptionsError] = useState('');
   const [registrationInfo, setRegistrationInfo] = useState(null);
-  const { registerTeacher } = useAuth();
+  const { registerTeacher, isAdmin } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -71,36 +68,81 @@ const TeacherRegister = () => {
     };
   }, []);
 
-  useEffect(() => {
-    if (!formData.class_id) {
-      setFilteredSubjects([]);
-      return;
-    }
-
-    const selectedClassId = Number(formData.class_id);
-    const availableSubjects = subjects.filter((subject) =>
-      (subject.classes || []).some((clsId) => clsId === selectedClassId)
-    );
-    setFilteredSubjects(availableSubjects);
-
-    const hasExistingSelection = availableSubjects.some(
-      (subject) => String(subject.id) === String(formData.subject_id || '')
-    );
-
-    if (!hasExistingSelection && formData.subject_id) {
-      setFormData((prev) => ({ ...prev, subject_id: '' }));
-    }
-  }, [formData.class_id, formData.subject_id, subjects]);
-
   const handleChange = (e) => {
     const { name, value } = e.target;
     const nextValue = name === 'teacher_id' ? value.toUpperCase() : value;
     setFormData((prev) => ({
       ...prev,
       [name]: nextValue,
-      ...(name === 'class_id' ? { subject_id: '' } : {}),
     }));
     setError('');
+  };
+
+  const handleImageFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      // Check file size (5MB limit)
+      if (file.size > 5 * 1024 * 1024) {
+        setError('Image size must be less than 5MB');
+        return;
+      }
+      setProfileImage(file);
+      setProfileImagePreview(URL.createObjectURL(file));
+    }
+  };
+
+  const handleCurrentAssignmentChange = (field, value) => {
+    setCurrentAssignment((prev) => {
+      const updated = { ...prev, [field]: value };
+      if (field === 'class_id') {
+        updated.subject_id = '';
+      }
+      return updated;
+    });
+    setError('');
+  };
+
+  const addAssignment = () => {
+    if (!currentAssignment.class_id) {
+      setError('Please select a class before adding.');
+      return;
+    }
+    if (!currentAssignment.subject_id) {
+      setError('Please select a subject before adding.');
+      return;
+    }
+
+    // Check for duplicates
+    const isDuplicate = classSubjectAssignments.some(
+      (a) => a.class_id === currentAssignment.class_id && a.subject_id === currentAssignment.subject_id
+    );
+    if (isDuplicate) {
+      setError('This class-subject combination has already been added.');
+      return;
+    }
+
+    setClassSubjectAssignments((prev) => [...prev, { ...currentAssignment }]);
+    setCurrentAssignment({ class_id: '', subject_id: '' });
+    setError('');
+  };
+
+  const removeAssignment = (index) => {
+    setClassSubjectAssignments((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const getFilteredSubjectsForClass = (classId) => {
+    if (!classId) return [];
+    return subjects.filter((subject) => Number(subject.class_assigned) === Number(classId));
+  };
+
+  const getClassName = (classId) => {
+    const cls = classes.find((c) => c.id === Number(classId));
+    return cls ? `${cls.name}${cls.section ? ` - ${cls.section}` : ''}` : '';
+  };
+
+  const getSubjectName = (subjectId) => {
+    const subject = subjects.find((s) => s.id === Number(subjectId));
+    return subject ? `${subject.name}${subject.code ? ` (${subject.code})` : ''}` : '';
   };
 
   const extractErrorMessage = (payload) => {
@@ -140,6 +182,11 @@ const TeacherRegister = () => {
     return 'Registration failed. Please try again.';
   };
 
+  const showError = (message) => {
+    setError(message);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
@@ -147,51 +194,47 @@ const TeacherRegister = () => {
 
     // Validation
     if (formData.password !== formData.password2) {
-      setError('Passwords do not match');
+      showError('Passwords do not match');
       setLoading(false);
       return;
     }
 
     if (formData.password.length < 8) {
-      setError('Password must be at least 8 characters long');
-      setLoading(false);
-      return;
-    }
-
-    if (!formData.teacher_id.trim()) {
-      setError('Teacher ID is required');
+      showError('Password must be at least 8 characters long');
       setLoading(false);
       return;
     }
 
     if (!formData.designation.trim()) {
-      setError('Designation is required');
+      showError('Designation is required');
       setLoading(false);
       return;
     }
 
     if (optionsLoading) {
-      setError('Please wait until class and subject options finish loading.');
+      showError('Please wait until class and subject options finish loading.');
       setLoading(false);
       return;
     }
 
-    if (!formData.class_id) {
-      setError('Please select a class.');
+    // Validate assignments
+    if (!classSubjectAssignments || classSubjectAssignments.length === 0) {
+      showError('Please add at least one class-subject assignment.');
       setLoading(false);
       return;
     }
 
-    if (filteredSubjects.length === 0) {
-      setError('No subjects are available for the selected class. Please choose a different class or contact the administration.');
-      setLoading(false);
-      return;
-    }
-
-    if (!formData.subject_id) {
-      setError('Please select a subject.');
-      setLoading(false);
-      return;
+    for (const assignment of classSubjectAssignments) {
+      if (!assignment.class_id) {
+        showError('Please select a class for all assignments.');
+        setLoading(false);
+        return;
+      }
+      if (!assignment.subject_id) {
+        showError('Please select a subject for all assignments.');
+        setLoading(false);
+        return;
+      }
     }
 
     try {
@@ -202,26 +245,58 @@ const TeacherRegister = () => {
         last_name: formData.last_name,
         phone: formData.phone,
         nid: formData.nid,
-        teacher_id: formData.teacher_id.trim().toUpperCase(),
         designation: formData.designation.trim(),
-        class_id: Number(formData.class_id),
-        subject_id: Number(formData.subject_id),
+        class_subject_assignments: classSubjectAssignments.map((a) => ({
+          class_id: Number(a.class_id),
+          subject_id: Number(a.subject_id),
+        })),
       };
 
-      const result = await registerTeacher(payload);
+      const trimmedTeacherId = formData.teacher_id.trim();
+      if (trimmedTeacherId) {
+        payload.teacher_id = trimmedTeacherId.toUpperCase();
+      }
+
+      if (isAdmin) {
+        payload.auto_approve = true;
+      }
+
+      // Handle profile image - create FormData if image is provided
+      let finalPayload = payload;
+      if (profileImage) {
+        const formDataWithImage = new FormData();
+        Object.keys(payload).forEach(key => {
+          if (key === 'class_subject_assignments') {
+            // FormData requires JSON stringify for complex objects
+            formDataWithImage.append(key, JSON.stringify(payload[key]));
+          } else {
+            formDataWithImage.append(key, payload[key]);
+          }
+        });
+        formDataWithImage.append('image', profileImage);
+        finalPayload = formDataWithImage;
+      }
+
+      const result = await registerTeacher(finalPayload);
       if (!result.success) {
-        setError(extractErrorMessage(result.error));
+        showError(extractErrorMessage(result.error));
         return;
       }
 
       setRegistrationInfo(result.data);
       setSuccess(true);
-      setTimeout(() => {
-        navigate('/login');
-      }, 3000);
+      if (isAdmin) {
+        setTimeout(() => {
+          navigate('/admin/users?tab=teachers');
+        }, 1500);
+      } else {
+        setTimeout(() => {
+          navigate('/login');
+        }, 3000);
+      }
     } catch (err) {
       console.error('Teacher registration failed', err);
-      setError('Registration failed. Please try again.');
+      showError('Registration failed. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -376,13 +451,12 @@ const TeacherRegister = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <label htmlFor="teacher_id" className="block text-sm font-medium text-gray-700 mb-1">
-                    Teacher ID *
+                    Teacher ID (optional)
                   </label>
                   <input
                     id="teacher_id"
                     name="teacher_id"
                     type="text"
-                    required
                     value={formData.teacher_id}
                     onChange={handleChange}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-blue-500 focus:border-blue-500 uppercase"
@@ -420,66 +494,132 @@ const TeacherRegister = () => {
                     Start typing to use a suggested title or enter your exact designation.
                   </p>
                 </div>
-                <div>
-                  <label htmlFor="class_id" className="block text-sm font-medium text-gray-700 mb-1">
-                    Preferred Class *
-                  </label>
-                  <select
-                    id="class_id"
-                    name="class_id"
-                    required
-                    value={formData.class_id}
-                    onChange={handleChange}
-                    disabled={optionsLoading}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:text-gray-500"
-                  >
-                    <option value="">Select class</option>
-                    {classes.map((cls) => (
-                      <option key={cls.id} value={cls.id}>
-                        {cls.name}
-                        {cls.section ? ` - ${cls.section}` : ''}
-                      </option>
-                    ))}
-                  </select>
-                  <p className="mt-2 text-xs text-gray-500">
-                    Choose the class you primarily teach so that the matching subjects can be selected.
-                  </p>
-                </div>
-                <div>
-                  <label htmlFor="subject_id" className="block text-sm font-medium text-gray-700 mb-1">
-                    Preferred Subject *
-                  </label>
-                  <select
-                    id="subject_id"
-                    name="subject_id"
-                    required
-                    value={formData.subject_id}
-                    onChange={handleChange}
-                    disabled={optionsLoading || !formData.class_id || filteredSubjects.length === 0}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:text-gray-500"
-                  >
-                    <option value="">
-                      {formData.class_id ? 'Select subject' : 'Select a class first'}
-                    </option>
-                    {filteredSubjects.map((subject) => (
-                      <option key={subject.id} value={subject.id}>
-                        {subject.name}
-                        {subject.code ? ` (${subject.code})` : ''}
-                      </option>
-                    ))}
-                  </select>
-                  {formData.class_id && !optionsLoading && filteredSubjects.length === 0 && (
-                    <p className="mt-2 text-xs text-red-600">
-                      No subjects are mapped to this class yet. Please choose a different class or contact the administration.
-                    </p>
-                  )}
-                  {filteredSubjects.length > 0 && (
-                    <p className="mt-2 text-xs text-gray-500">
-                      Subjects listed here are already linked to the selected class.
-                    </p>
-                  )}
-                </div>
               </div>
+            </div>
+
+            {/* Class-Subject Assignments Section */}
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4 pb-2 border-b">
+                Class-Subject Assignments *
+              </h3>
+              <p className="text-sm text-gray-600 mb-4">
+                Add all the classes and subjects you will be teaching. Select a class and subject, then click "Add" to add them to your list.
+              </p>
+              
+              {/* Input Row */}
+              <div className="p-4 bg-gray-50 rounded-lg border border-gray-200 mb-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                  {/* Class Select */}
+                  <div>
+                    <label
+                      htmlFor="current_class"
+                      className="block text-sm font-medium text-gray-700 mb-1"
+                    >
+                      Class
+                    </label>
+                    <select
+                      id="current_class"
+                      value={currentAssignment.class_id}
+                      onChange={(e) => handleCurrentAssignmentChange('class_id', e.target.value)}
+                      disabled={optionsLoading}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100"
+                    >
+                      <option value="">Select class</option>
+                      {classes.map((cls) => (
+                        <option key={cls.id} value={cls.id}>
+                          {cls.name}
+                          {cls.section ? ` - ${cls.section}` : ''}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Subject Select */}
+                  <div>
+                    <label
+                      htmlFor="current_subject"
+                      className="block text-sm font-medium text-gray-700 mb-1"
+                    >
+                      Subject
+                    </label>
+                    <select
+                      id="current_subject"
+                      value={currentAssignment.subject_id}
+                      onChange={(e) => handleCurrentAssignmentChange('subject_id', e.target.value)}
+                      disabled={
+                        optionsLoading ||
+                        !currentAssignment.class_id ||
+                        getFilteredSubjectsForClass(currentAssignment.class_id).length === 0
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100"
+                    >
+                      <option value="">
+                        {currentAssignment.class_id ? 'Select subject' : 'Select a class first'}
+                      </option>
+                      {getFilteredSubjectsForClass(currentAssignment.class_id).map((subject) => (
+                        <option key={subject.id} value={subject.id}>
+                          {subject.name}
+                          {subject.code ? ` (${subject.code})` : ''}
+                        </option>
+                      ))}
+                    </select>
+                    {currentAssignment.class_id &&
+                      !optionsLoading &&
+                      getFilteredSubjectsForClass(currentAssignment.class_id).length === 0 && (
+                        <p className="mt-2 text-xs text-red-600">
+                          No subjects are mapped to this class.
+                        </p>
+                      )}
+                  </div>
+                </div>
+
+                {/* Add Button */}
+                <button
+                  type="button"
+                  onClick={addAssignment}
+                  className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium text-sm transition"
+                >
+                  + Add to List
+                </button>
+              </div>
+
+              {/* Assignments List */}
+              {classSubjectAssignments.length > 0 && (
+                <div className="space-y-2">
+                  <h4 className="text-sm font-medium text-gray-700 mb-2">
+                    Added Assignments ({classSubjectAssignments.length})
+                  </h4>
+                  {classSubjectAssignments.map((assignment, index) => (
+                    <div
+                      key={index}
+                      className="flex items-center justify-between p-3 bg-white border border-gray-200 rounded-lg"
+                    >
+                      <div className="flex-1">
+                        <span className="text-sm font-medium text-gray-900">
+                          {getClassName(assignment.class_id)}
+                        </span>
+                        <span className="mx-2 text-gray-400">•</span>
+                        <span className="text-sm text-gray-700">
+                          {getSubjectName(assignment.subject_id)}
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => removeAssignment(index)}
+                        className="ml-4 text-red-600 hover:text-red-800 text-sm font-medium"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {classSubjectAssignments.length === 0 && (
+                <p className="text-sm text-gray-500 italic">
+                  No assignments added yet. Please add at least one class-subject combination.
+                </p>
+              )}
             </div>
 
             {/* Contact Information Section */}
@@ -522,6 +662,33 @@ const TeacherRegister = () => {
                     placeholder="01712345678"
                   />
                 </div>
+              </div>
+
+              {/* Profile Picture */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Profile Picture (Optional)
+                </label>
+                
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageFileChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                />
+                <p className="text-xs text-gray-500 mt-1">Maximum file size: 5MB</p>
+
+                {/* Image preview */}
+                {profileImagePreview && (
+                  <div className="mt-3">
+                    <p className="text-sm text-gray-600 mb-2">Preview:</p>
+                    <img
+                      src={profileImagePreview}
+                      alt="Profile preview"
+                      className="w-32 h-32 object-cover rounded-full border-2 border-gray-300"
+                    />
+                  </div>
+                )}
               </div>
             </div>
 

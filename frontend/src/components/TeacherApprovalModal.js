@@ -10,16 +10,29 @@ const TeacherApprovalModal = ({ teacher, onClose, onApprove }) => {
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [teacher?.id]);
 
   const loadData = async () => {
     try {
-      const [sRes, cRes] = await Promise.all([
+      const [sRes, cRes, aRes] = await Promise.all([
         subjectAPI.getAll(),
         classAPI.getAll(),
+        teacher?.id ? teacherAssignmentAPI.getByTeacher(teacher.id) : Promise.resolve({ data: [] }),
       ]);
       setSubjects(sRes.data);
       setClasses(cRes.data);
+
+      const existing = Array.isArray(aRes.data) ? aRes.data : [];
+      if (existing.length > 0) {
+        setAssignments(
+          existing.map((a) => ({
+            subject_id: String(a.subject),
+            class_id: String(a.class_assigned),
+          }))
+        );
+      } else {
+        setAssignments([{ subject_id: '', class_id: '' }]);
+      }
     } catch (e) {
       console.error(e);
     } finally {

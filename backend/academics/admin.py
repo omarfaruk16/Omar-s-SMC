@@ -1,15 +1,12 @@
 from django.contrib import admin
-from .models import Subject, AttendanceRecord, TimetableSlot, Mark, Exam
+from .models import Subject, AttendanceRecord, TimetableSlot, Mark, Exam, ExamSchedule
 
 
 @admin.register(Subject)
 class SubjectAdmin(admin.ModelAdmin):
-    list_display = ['name', 'code', 'class_count']
+    list_display = ['name', 'code', 'class_assigned', 'is_fourth_subject']
+    list_filter = ['class_assigned', 'is_fourth_subject']
     search_fields = ['name', 'code']
-    filter_horizontal = ['classes']
-
-    def class_count(self, obj):
-        return obj.classes.count()
 
 
 @admin.register(AttendanceRecord)
@@ -32,8 +29,13 @@ class MarkAdmin(admin.ModelAdmin):
     list_filter = ['class_assigned', 'subject', 'date']
     search_fields = ['student__user__first_name', 'student__user__last_name', 'exam_name']
 
+class ExamScheduleInline(admin.TabularInline):
+    model = ExamSchedule
+    extra = 1
+
 @admin.register(Exam)
 class ExamAdmin(admin.ModelAdmin):
-    list_display = ['title', 'class_assigned', 'subject', 'date', 'start_time', 'end_time']
-    list_filter = ['class_assigned', 'subject', 'date']
-    search_fields = ['title', 'description']
+    list_display = ['title', 'class_assigned', 'exam_fee', 'published', 'results_published', 'created_at']
+    list_filter = ['class_assigned', 'published', 'results_published', 'created_at']
+    search_fields = ['title']
+    inlines = [ExamScheduleInline]

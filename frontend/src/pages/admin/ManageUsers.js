@@ -1,32 +1,55 @@
 import React, { useState, useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { teacherAPI, studentAPI } from '../../services/api';
 import { useToast } from '../../context/ToastContext';
+import Avatar from '../../components/Avatar';
+import { FaEye, FaPen, FaTrash, FaBan, FaCheckCircle } from 'react-icons/fa';
 
 const ManageUsers = () => {
   const toast = useToast();
+  const location = useLocation();
+  const navigate = useNavigate();
+  
   const [teachers, setTeachers] = useState([]);
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('teachers');
+  
+  // Parse query params for active tab
+  const getInitialTab = () => {
+    const params = new URLSearchParams(location.search);
+    const tab = params.get('tab');
+    if (tab === 'students') return 'students';
+    return 'teachers';
+  };
+  
+  const [activeTab, setActiveTab] = useState(getInitialTab());
+
+  // Update tab when URL changes
+  useEffect(() => {
+    setActiveTab(getInitialTab());
+  }, [location.search]);
 
   useEffect(() => {
     fetchUsers();
-  }, []);
+  }, [activeTab]);
+
+  const handleTabChange = (tab) => {
+    setActiveTab(tab);
+    navigate(`/admin/users?tab=${tab}`);
+  };
 
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      const [teachersRes, studentsRes] = await Promise.all([
-        teacherAPI.getAll(),
-        studentAPI.getAll()
-      ]);
-      
-      // Filter only approved users
-      const approvedTeachers = teachersRes.data.filter(t => t.user.status === 'approved');
-      const approvedStudents = studentsRes.data.filter(s => s.user.status === 'approved');
-      
-      setTeachers(approvedTeachers);
-      setStudents(approvedStudents);
+      if (activeTab === 'teachers') {
+          const teachersRes = await teacherAPI.getAll();
+          const visibleTeachers = teachersRes.data.filter(t => t.user.status === 'approved');
+          setTeachers(visibleTeachers);
+      } else {
+          const studentsRes = await studentAPI.getAll();
+          const visibleStudents = studentsRes.data.filter(s => s.user.status === 'approved');
+          setStudents(visibleStudents);
+      }
     } catch (error) {
       console.error('Error fetching users:', error);
       toast.error('Failed to fetch users');
@@ -53,7 +76,28 @@ const ManageUsers = () => {
     }
   };
 
-  if (loading) {
+  const handleToggleStatus = async (id, type) => {
+      try {
+          if (type === 'teacher') {
+              const res = await teacherAPI.toggleStatus(id);
+              setTeachers(teachers.map(t => 
+                  t.id === id ? { ...t, user: { ...t.user, is_active: res.data.is_active } } : t
+              ));
+              toast.success(res.data.message);
+          } else {
+              const res = await studentAPI.toggleStatus(id);
+              setStudents(students.map(s => 
+                  s.id === id ? { ...s, user: { ...s.user, is_active: res.data.is_active } } : s
+              ));
+              toast.success(res.data.message);
+          }
+      } catch (error) {
+          console.error('Error toggling status:', error);
+          toast.error('Failed to update status');
+      }
+  };
+
+  if (loading && teachers.length === 0 && students.length === 0) {
     return (
       <div className="min-h-screen bg-gray-50 py-8 flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
@@ -64,36 +108,52 @@ const ManageUsers = () => {
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="container mx-auto px-4">
-        <h1 className="text-3xl font-bold text-gray-900 mb-6">Manage Users</h1>
+        <div className="flex justify-between items-center mb-6">
+            <h1 className="text-3xl font-bold text-gray-900">Manage Users</h1>
+            <div className="flex gap-2">
+                <button
+                    onClick={() => navigate('/register/teacher')}
+                    className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm transition"
+                >
+                    Add Teacher
+                </button>
+                <button
+                    onClick={() => navigate('/register/student')}
+                    className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm transition"
+                >
+                    Add Student
+                </button>
+            </div>
+        </div>
 
         {/* Tabs */}
-        <div className="mb-6 border-b">
+        <div className="mb-6 border-b flex space-x-2">
           <button
-            onClick={() => setActiveTab('teachers')}
-            className={`px-6 py-3 font-semibold ${
+            onClick={() => handleTabChange('teachers')}
+            className={`px-6 py-3 font-semibold transition-colors ${
               activeTab === 'teachers'
                 ? 'text-blue-600 border-b-2 border-blue-600'
-                : 'text-gray-600 hover:text-blue-600'
+                : 'text-gray-600 hover:text-blue-600 hover:bg-gray-50'
             }`}
           >
-            Teachers ({teachers.length})
+            Teachers
           </button>
           <button
-            onClick={() => setActiveTab('students')}
-            className={`px-6 py-3 font-semibold ${
+            onClick={() => handleTabChange('students')}
+            className={`px-6 py-3 font-semibold transition-colors ${
               activeTab === 'students'
                 ? 'text-blue-600 border-b-2 border-blue-600'
-                : 'text-gray-600 hover:text-blue-600'
+                : 'text-gray-600 hover:text-blue-600 hover:bg-gray-50'
             }`}
           >
-            Students ({students.length})
+            Students
           </button>
         </div>
 
         {/* Teachers Tab */}
         {activeTab === 'teachers' && (
           <div className="bg-white rounded-lg shadow-md overflow-hidden">
-            {teachers.length === 0 ? (
+            {teachers.length === 0 && !loading ? (
               <div className="p-8 text-center text-gray-500">
                 No approved teachers found
               </div>
@@ -103,71 +163,75 @@ const ManageUsers = () => {
                   <thead className="bg-gray-50">
                     <tr>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Phone</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Teacher ID</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Contact</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Designation</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Preferred Subject</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Preferred Class</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">NID</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
                     {teachers.map((teacher) => (
-                      <tr key={teacher.id}>
+                      <tr key={teacher.id} className={`hover:bg-gray-50 ${!teacher.user.is_active ? 'bg-red-50' : ''}`}>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center">
                             <div className="h-10 w-10 flex-shrink-0">
-                              <div className="h-10 w-10 rounded-full bg-blue-500 flex items-center justify-center text-white font-semibold">
-                                {teacher.user.first_name[0]}{teacher.user.last_name[0]}
-                              </div>
+                                <Avatar 
+                                    image={teacher.user.image}
+                                    name={`${teacher.user.first_name || ''} ${teacher.user.last_name || ''}`}
+                                    size="md"
+                                />
                             </div>
                             <div className="ml-4">
                               <div className="text-sm font-medium text-gray-900">
                                 {teacher.user.first_name} {teacher.user.last_name}
                               </div>
+                              {!teacher.user.is_active && (
+                                <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
+                                  Blocked
+                                </span>
+                              )}
                             </div>
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {teacher.user.email}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {teacher.user.phone || 'N/A'}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {teacher.teacher_id || 'N/A'}
+                          <div className="flex flex-col">
+                              <span><strong>Email:</strong> {teacher.user.email}</span>
+                              <span className="text-gray-500"><strong>Mobile:</strong> {teacher.user.phone || 'N/A'}</span>
+                          </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                           {teacher.designation || 'N/A'}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {teacher.preferred_subject_detail
-                            ? `${teacher.preferred_subject_detail.name}${teacher.preferred_subject_detail.code ? ` (${teacher.preferred_subject_detail.code})` : ''}`
-                            : 'N/A'}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {teacher.preferred_class_detail
-                            ? `${teacher.preferred_class_detail.name}${teacher.preferred_class_detail.section ? ` - ${teacher.preferred_class_detail.section}` : ''}`
-                            : 'N/A'}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {teacher.nid}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                            Active
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm space-x-2">
-                          <button
-                            onClick={() => handleDelete(teacher.id, 'teacher')}
-                            className="px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700"
-                          >
-                            Delete
-                          </button>
+                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                          <div className="flex justify-end gap-2">
+                              <button
+                                onClick={() => navigate(`/admin/teachers/edit/${teacher.id}`)}
+                                className="text-blue-600 hover:text-blue-900 p-2 rounded hover:bg-blue-50"
+                                title="View/Edit"
+                              >
+                                <FaEye size={18} />
+                              </button>
+                              <button
+                                onClick={() => navigate(`/admin/teachers/edit/${teacher.id}`)}
+                                className="text-amber-600 hover:text-amber-900 p-2 rounded hover:bg-amber-50"
+                                title="Edit"
+                              >
+                                <FaPen size={17} />
+                              </button>
+                              <button
+                                onClick={() => handleToggleStatus(teacher.id, 'teacher')}
+                                className={`${teacher.user.is_active ? 'text-gray-500 hover:text-red-700' : 'text-green-600 hover:text-green-800'} p-2 rounded hover:bg-gray-100`}
+                                title={teacher.user.is_active ? "Block User" : "Activate User"}
+                              >
+                                {teacher.user.is_active ? <FaBan size={17} /> : <FaCheckCircle size={17} />}
+                              </button>
+                              <button
+                                onClick={() => handleDelete(teacher.id, 'teacher')}
+                                className="text-red-600 hover:text-red-900 p-2 rounded hover:bg-red-50"
+                                title="Delete"
+                              >
+                                <FaTrash size={17} />
+                              </button>
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -181,7 +245,7 @@ const ManageUsers = () => {
         {/* Students Tab */}
         {activeTab === 'students' && (
           <div className="bg-white rounded-lg shadow-md overflow-hidden">
-            {students.length === 0 ? (
+            {students.length === 0 && !loading ? (
               <div className="p-8 text-center text-gray-500">
                 No approved students found
               </div>
@@ -190,55 +254,88 @@ const ManageUsers = () => {
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50">
                     <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Phone</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Class</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase w-1/4">Name</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase w-1/4">Class Info</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase w-1/6">Roll No</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase w-1/6">Contact</th>
+                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase w-1/6">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {students.map((student) => (
-                      <tr key={student.id}>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center">
-                            <div className="h-10 w-10 flex-shrink-0">
-                              <div className="h-10 w-10 rounded-full bg-green-500 flex items-center justify-center text-white font-semibold">
-                                {student.user.first_name[0]}{student.user.last_name[0]}
+                    {students.map((student) => {
+                      const classInfo = student.student_class_detail || student.student_class || {};
+                      const className = classInfo.name || 'N/A';
+                      const section = classInfo.section || 'N/A';
+                      const session = classInfo.session || 'N/A';
+                         
+                         return (
+                          <tr key={student.id} className={`hover:bg-gray-50 ${!student.user.is_active ? 'bg-red-50' : ''}`}>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="flex items-center">
+                                <div className="h-10 w-10 flex-shrink-0">
+                                    <Avatar
+                                        image={student.user.image}
+                                        name={`${student.user.first_name || ''} ${student.user.last_name || ''}`}
+                                        size="md"
+                                    />
+                                </div>
+                                <div className="ml-4">
+                                  <div className="text-sm font-medium text-gray-900">
+                                    {student.user.first_name} {student.user.last_name}
+                                  </div>
+                                  {!student.user.is_active && (
+                                    <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
+                                      Blocked
+                                    </span>
+                                  )}
+                                </div>
                               </div>
-                            </div>
-                            <div className="ml-4">
-                              <div className="text-sm font-medium text-gray-900">
-                                {student.user.first_name} {student.user.last_name}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                <span className="block font-medium text-gray-700">Class: {className}</span>
+                                <span className="block text-xs">Sec: {section} | Session: {session}</span>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              {student.roll_number || 'N/A'}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              {student.user.phone || 'N/A'}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                              <div className="flex justify-end gap-2">
+                                  <button
+                                    onClick={() => navigate(`/admin/students/${student.id}`)}
+                                    className="text-blue-600 hover:text-blue-900 p-2 rounded hover:bg-blue-50"
+                                    title="View Details"
+                                  >
+                                    <FaEye size={18} />
+                                  </button>
+                                  <button
+                                    onClick={() => navigate(`/admin/students/edit/${student.id}`)}
+                                    className="text-amber-600 hover:text-amber-900 p-2 rounded hover:bg-amber-50"
+                                    title="Edit"
+                                  >
+                                    <FaPen size={17} />
+                                  </button>
+                                  <button
+                                    onClick={() => handleToggleStatus(student.id, 'student')}
+                                    className={`${student.user.is_active ? 'text-gray-500 hover:text-red-700' : 'text-green-600 hover:text-green-800'} p-2 rounded hover:bg-gray-100`}
+                                    title={student.user.is_active ? "Block User" : "Activate User"}
+                                  >
+                                    {student.user.is_active ? <FaBan size={17} /> : <FaCheckCircle size={17} />}
+                                  </button>
+                                  <button
+                                    onClick={() => handleDelete(student.id, 'student')}
+                                    className="text-red-600 hover:text-red-900 p-2 rounded hover:bg-red-50"
+                                    title="Delete"
+                                  >
+                                    <FaTrash size={17} />
+                                  </button>
                               </div>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {student.user.email}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {student.user.phone || 'N/A'}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {student.student_class_detail ? `${student.student_class_detail.name}${student.student_class_detail.section ? ' - ' + student.student_class_detail.section : ''}` : 'Not Assigned'}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                            Active
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm space-x-2">
-                          <button
-                            onClick={() => handleDelete(student.id, 'student')}
-                            className="px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700"
-                          >
-                            Delete
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
+                            </td>
+                          </tr>
+                         );
+                    })}
                   </tbody>
                 </table>
               </div>

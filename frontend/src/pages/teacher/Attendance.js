@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { classAPI, attendanceAPI, studentAPI, teacherAPI, subjectAPI } from '../../services/api';
+import React, { useEffect, useMemo, useState } from 'react';
+import { attendanceAPI, studentAPI, teacherAPI, teacherAssignmentAPI } from '../../services/api';
 import { useToast } from '../../context/ToastContext';
 
 const TeacherAttendance = () => {
@@ -10,7 +10,7 @@ const TeacherAttendance = () => {
   const [date, setDate] = useState(new Date().toISOString().slice(0,10));
   const [present, setPresent] = useState({});
   const [loading, setLoading] = useState(true);
-  const [subjects, setSubjects] = useState([]);
+  const [assignments, setAssignments] = useState([]);
   const [subject, setSubject] = useState('');
 
   useEffect(() => { load(); }, []);
@@ -20,10 +20,24 @@ const TeacherAttendance = () => {
       setLoading(true);
       const tRes = await teacherAPI.getAll();
       const me = Array.isArray(tRes.data) && tRes.data.length > 0 ? tRes.data[0] : null;
-      const cls = me?.assigned_classes || [];
-      setClasses(cls);
-      // preload subjects for assigned classes
-      try { const sRes = await subjectAPI.getAll(); setSubjects(sRes.data); } catch(e) {}
+      if (!me?.id) {
+        setClasses([]);
+        setAssignments([]);
+        return;
+      }
+      const aRes = await teacherAssignmentAPI.getByTeacher(me.id);
+      const list = Array.isArray(aRes.data) ? aRes.data : [];
+      setAssignments(list);
+      const classMap = new Map();
+      list.forEach((a) => {
+        if (!classMap.has(a.class_assigned)) {
+          classMap.set(a.class_assigned, {
+            id: a.class_assigned,
+            label: a.class_name || `Class ${a.class_assigned}`,
+          });
+        }
+      });
+      setClasses(Array.from(classMap.values()));
     } catch (e) { console.error(e); toast.error('Failed to load classes'); }
     finally { setLoading(false); }
   };
@@ -42,6 +56,24 @@ const TeacherAttendance = () => {
     };
     fetchStudents();
   }, [selectedClass]);
+
+  useEffect(() => {
+    setSubject('');
+  }, [selectedClass]);
+
+  const subjectOptions = useMemo(() => {
+    const filtered = assignments.filter((a) => !selectedClass || String(a.class_assigned) === String(selectedClass));
+    const subjectMap = new Map();
+    filtered.forEach((a) => {
+      if (!subjectMap.has(a.subject)) {
+        subjectMap.set(a.subject, {
+          id: a.subject,
+          label: a.subject_name || `Subject ${a.subject}`,
+        });
+      }
+    });
+    return Array.from(subjectMap.values());
+  }, [assignments, selectedClass]);
 
   const submit = async () => {
     try {
@@ -66,12 +98,12 @@ const TeacherAttendance = () => {
         <div className="bg-white rounded-lg shadow-md p-6 mb-6 grid grid-cols-1 md:grid-cols-4 gap-4">
           <select value={selectedClass} onChange={(e)=>setSelectedClass(e.target.value)} className="px-3 py-2 border rounded-lg">
             <option value="" disabled>Select class</option>
-            {classes.map(c => (<option key={c.id} value={c.id}>{c.name}{c.section?` - ${c.section}`:''}</option>))}
+            {classes.map(c => (<option key={c.id} value={c.id}>{c.label}</option>))}
           </select>
           <select value={subject} onChange={(e)=>setSubject(e.target.value)} className="px-3 py-2 border rounded-lg">
             <option value="">(no subject)</option>
-            {subjects.filter(s => !selectedClass || (s.classes || []).includes(Number(selectedClass))).map(s => (
-              <option key={s.id} value={s.id}>{s.name}</option>
+            {subjectOptions.map(s => (
+              <option key={s.id} value={s.id}>{s.label}</option>
             ))}
           </select>
           <input type="date" value={date} onChange={(e)=>setDate(e.target.value)} className="px-3 py-2 border rounded-lg" />

@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { classAPI } from '../../services/api';
 import { useToast } from '../../context/ToastContext';
 
 const ManageClasses = () => {
+  const navigate = useNavigate();
   const toast = useToast();
   const [classes, setClasses] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -10,7 +12,8 @@ const ManageClasses = () => {
   const [editingClass, setEditingClass] = useState(null);
   const [formData, setFormData] = useState({
     name: '',
-    section: ''
+    section: '',
+    session: ''
   });
 
   useEffect(() => {
@@ -40,7 +43,7 @@ const ManageClasses = () => {
         await classAPI.create(formData);
         toast.success('Class created');
       }
-      setFormData({ name: '', section: '' });
+      setFormData({ name: '', section: '', session: '' });
       setEditingClass(null);
       setShowForm(false);
       fetchClasses();
@@ -54,7 +57,8 @@ const ManageClasses = () => {
     setEditingClass(classItem);
     setFormData({
       name: classItem.name,
-      section: classItem.section || ''
+      section: classItem.section || '',
+      session: classItem.session || ''
     });
     setShowForm(true);
   };
@@ -75,7 +79,20 @@ const ManageClasses = () => {
   const handleCancel = () => {
     setShowForm(false);
     setEditingClass(null);
-    setFormData({ name: '', section: '' });
+    setFormData({ name: '', section: '', session: '' });
+  };
+
+  const handleAddSection = async (classItem) => {
+    const section = window.prompt('Enter new section for this class (e.g., A):');
+    if (!section) return;
+    try {
+      await classAPI.create({ name: classItem.name, section, session: classItem.session || '' });
+      toast.success('Section added');
+      fetchClasses();
+    } catch (error) {
+      console.error('Error creating section:', error);
+      toast.error('Failed to add section');
+    }
   };
 
   if (loading) {
@@ -106,7 +123,7 @@ const ManageClasses = () => {
               {editingClass ? 'Edit Class' : 'Add New Class'}
             </h2>
             <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Class Name *
@@ -132,18 +149,18 @@ const ManageClasses = () => {
                     placeholder="e.g., A"
                   />
                 </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Description
-                </label>
-                <textarea
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  rows="3"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="Class description..."
-                />
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Session
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.session}
+                    onChange={(e) => setFormData({ ...formData, session: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="e.g., 2025-2026"
+                  />
+                </div>
               </div>
               <div className="flex space-x-2">
                 <button
@@ -177,6 +194,7 @@ const ManageClasses = () => {
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Class Name</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Section</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Session</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Students</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Teachers</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
@@ -192,12 +210,33 @@ const ManageClasses = () => {
                         {classItem.section || 'N/A'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {classItem.session || 'N/A'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         {classItem.student_count}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         {classItem.teacher_count}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm space-x-2">
+                        <button
+                          onClick={() => navigate(`/admin/classes/${classItem.id}`)}
+                          className="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700"
+                        >
+                          Details
+                        </button>
+                        <button
+                          onClick={() => navigate(`/admin/classes/${classItem.id}?addSubject=1`)}
+                          className="px-3 py-1 bg-indigo-600 text-white rounded hover:bg-indigo-700"
+                        >
+                          Add Subject
+                        </button>
+                        <button
+                          onClick={() => handleAddSection(classItem)}
+                          className="px-3 py-1 bg-purple-600 text-white rounded hover:bg-purple-700"
+                        >
+                          Add Section
+                        </button>
                         <button
                           onClick={() => handleEdit(classItem)}
                           className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700"
