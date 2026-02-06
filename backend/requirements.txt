@@ -12,3 +12,4 @@ pywebpush==2.2.0
 requests==2.32.5
 sqlparse==0.5.5
 whitenoise==6.8.2
+weasyprint==64.1
