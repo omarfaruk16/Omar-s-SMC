@@ -1,8 +1,16 @@
 import os
 import django
+from decouple import config
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
 django.setup()
+
+# Check environment mode
+MODE = config('MODE', default='development')
+
+if MODE == 'production':
+    print('⚠️  Production mode detected. Skipping test user creation.')
+    exit(0)
 
 from django.contrib.auth import get_user_model
 from users.models import Teacher, Student

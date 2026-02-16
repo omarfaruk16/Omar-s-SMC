@@ -11,7 +11,7 @@ const Avatar = ({ image, name, size = 'md', className = '' }) => {
         // Assume backend is on port 8000 if not specified otherwise, 
         // or try to extract from env if available, but for now robustly handling the common case
         // Ideally this comes from a config
-        const backendUrl = process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000';
+        const backendUrl = process.env.REACT_APP_BACKEND_URL || window.location.origin;
         setCurrentImage(`${backendUrl}${image}`);
     } else {
         setCurrentImage(image);
