@@ -75,9 +75,10 @@ echo "🏗️  Building frontend..."
 
 cd "$REPO_DIR/frontend"
 
-echo "  → Cleaning npm cache"
-rm -rf node_modules .npm
-npm cache clean --force
+echo "  → Cleaning npm cache and node_modules"
+npm cache clean --force 2>/dev/null || true
+find . -name node_modules -type d -exec rm -rf {} + 2>/dev/null || true
+rm -f package-lock.json
 
 echo "  → Installing dependencies"
 npm install
