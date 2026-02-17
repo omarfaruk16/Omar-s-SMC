@@ -76,11 +76,11 @@ echo "🏗️  Building frontend..."
 cd "$REPO_DIR/frontend"
 
 echo "  → Cleaning npm cache"
-rm -rf node_modules .npm package-lock.json
+rm -rf node_modules .npm
 npm cache clean --force
 
-echo "  → Clean npm install"
-npm ci
+echo "  → Installing dependencies"
+npm install
 echo "    ✓ Dependencies installed"
 
 echo "  → Building production bundle"
