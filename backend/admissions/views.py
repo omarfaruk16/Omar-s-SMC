@@ -11,6 +11,7 @@ from django.utils import timezone
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -125,6 +126,7 @@ class AdmissionFormTemplateViewSet(viewsets.ModelViewSet):
     queryset = AdmissionFormTemplate.objects.all()
     serializer_class = AdmissionFormTemplateSerializer
     permission_classes = [IsAdminOrReadOnly]
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
     lookup_field = "slug"
 
     def get_queryset(self):

@@ -62,24 +62,49 @@ const ManageStudents = () => {
   const handleEdit = (student) => {
     setSelectedStudent(student);
     setEditFormData({
+      // User fields
+      first_name: student.user?.first_name || '',
+      last_name: student.user?.last_name || '',
+      email: student.user?.email || '',
+      phone: student.user?.phone || '',
+      password: '',
+      image: null,
+      imagePreview: student.user?.image || null,
+      // Student fields
       roll_number: student.roll_number || '',
       student_class: student.student_class?.id || '',
+      address: student.address || '',
+      date_of_birth: student.date_of_birth ? (String(student.date_of_birth).split('T')[0]) : '',
+      gender: student.gender || '',
+      registration: student.registration || '',
+      session: student.session || '',
     });
     setShowEditModal(true);
   };
 
   const handleSaveEdit = async () => {
     try {
-      // Update roll number if changed
-      if (editFormData.roll_number !== selectedStudent.roll_number) {
-        await studentAPI.updateRoll(selectedStudent.id, editFormData.roll_number);
-      }
-      
-      // Update class if changed
-      if (editFormData.student_class && editFormData.student_class !== selectedStudent.student_class?.id) {
-        await studentAPI.changeClass(selectedStudent.id, editFormData.student_class);
-      }
-      
+      const formData = new FormData();
+
+      // Append user fields
+      if (editFormData.first_name !== undefined) formData.append('first_name', editFormData.first_name);
+      if (editFormData.last_name !== undefined) formData.append('last_name', editFormData.last_name);
+      if (editFormData.email !== undefined) formData.append('email', editFormData.email);
+      if (editFormData.phone !== undefined) formData.append('phone', editFormData.phone);
+      if (editFormData.password) formData.append('password', editFormData.password);
+      if (editFormData.image instanceof File) formData.append('image', editFormData.image);
+
+      // Append student fields
+      if (editFormData.roll_number !== undefined) formData.append('roll_number', editFormData.roll_number);
+      if (editFormData.student_class !== undefined) formData.append('student_class', editFormData.student_class);
+      if (editFormData.address !== undefined) formData.append('address', editFormData.address);
+      if (editFormData.date_of_birth !== undefined) formData.append('date_of_birth', editFormData.date_of_birth);
+      if (editFormData.gender !== undefined) formData.append('gender', editFormData.gender);
+      if (editFormData.registration !== undefined) formData.append('registration', editFormData.registration);
+      if (editFormData.session !== undefined) formData.append('session', editFormData.session);
+
+      await studentAPI.update(selectedStudent.id, formData);
+
       toast.success('Student information updated successfully');
       setShowEditModal(false);
       fetchData();
@@ -574,7 +599,7 @@ const ManageStudents = () => {
         {/* Edit Modal */}
         {showEditModal && selectedStudent && (
           <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-            <div className="bg-white rounded-lg max-w-md w-full">
+            <div className="bg-white rounded-lg max-w-2xl w-full">
               <div className="p-6">
                 <div className="flex justify-between items-center mb-6">
                   <h2 className="text-2xl font-bold text-gray-900">Edit Student</h2>
@@ -588,31 +613,154 @@ const ManageStudents = () => {
                   </button>
                 </div>
 
-                <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* First column: User info */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Roll Number</label>
-                    <input
-                      type="text"
-                      value={editFormData.roll_number}
-                      onChange={(e) => setEditFormData({...editFormData, roll_number: e.target.value})}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                      placeholder="Enter roll number"
-                    />
+                    <h3 className="text-lg font-semibold mb-3 text-gray-900">User Information</h3>
+                    <div className="space-y-3">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">First Name</label>
+                        <input
+                          type="text"
+                          value={editFormData.first_name}
+                          onChange={(e) => setEditFormData({...editFormData, first_name: e.target.value})}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Last Name</label>
+                        <input
+                          type="text"
+                          value={editFormData.last_name}
+                          onChange={(e) => setEditFormData({...editFormData, last_name: e.target.value})}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                        <input
+                          type="email"
+                          value={editFormData.email}
+                          onChange={(e) => setEditFormData({...editFormData, email: e.target.value})}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+                        <input
+                          type="text"
+                          value={editFormData.phone}
+                          onChange={(e) => setEditFormData({...editFormData, phone: e.target.value})}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Password (leave blank to keep)</label>
+                        <input
+                          type="password"
+                          value={editFormData.password}
+                          onChange={(e) => setEditFormData({...editFormData, password: e.target.value})}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Profile Image</label>
+                        {editFormData.imagePreview && (
+                          <div className="mb-2">
+                            <img src={editFormData.imagePreview} alt="preview" className="w-20 h-20 object-cover rounded-full" />
+                          </div>
+                        )}
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => {
+                            const file = e.target.files && e.target.files[0] ? e.target.files[0] : null;
+                            setEditFormData({...editFormData, image: file, imagePreview: file ? URL.createObjectURL(file) : (selectedStudent.user?.image || null)});
+                          }}
+                          className="w-full"
+                        />
+                      </div>
+                    </div>
                   </div>
+
+                  {/* Second column: Student info */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Class</label>
-                    <select
-                      value={editFormData.student_class}
-                      onChange={(e) => setEditFormData({...editFormData, student_class: e.target.value})}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                    >
-                      <option value="">Select Class</option>
-                      {classes.map((cls) => (
-                        <option key={cls.id} value={cls.id}>
-                          {cls.section ? `${cls.name} - ${cls.section}` : cls.name}
-                        </option>
-                      ))}
-                    </select>
+                    <h3 className="text-lg font-semibold mb-3 text-gray-900">Student Information</h3>
+                    <div className="space-y-3">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Roll Number</label>
+                        <input
+                          type="text"
+                          value={editFormData.roll_number}
+                          onChange={(e) => setEditFormData({...editFormData, roll_number: e.target.value})}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Class</label>
+                        <select
+                          value={editFormData.student_class}
+                          onChange={(e) => setEditFormData({...editFormData, student_class: e.target.value})}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                        >
+                          <option value="">Select Class</option>
+                          {classes.map((cls) => (
+                            <option key={cls.id} value={cls.id}>
+                              {cls.section ? `${cls.name} - ${cls.section}` : cls.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
+                        <input
+                          type="text"
+                          value={editFormData.address}
+                          onChange={(e) => setEditFormData({...editFormData, address: e.target.value})}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Date of Birth</label>
+                        <input
+                          type="date"
+                          value={editFormData.date_of_birth}
+                          onChange={(e) => setEditFormData({...editFormData, date_of_birth: e.target.value})}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Gender</label>
+                        <select
+                          value={editFormData.gender}
+                          onChange={(e) => setEditFormData({...editFormData, gender: e.target.value})}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                        >
+                          <option value="">Select</option>
+                          <option value="male">Male</option>
+                          <option value="female">Female</option>
+                          <option value="other">Other</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Registration</label>
+                        <input
+                          type="text"
+                          value={editFormData.registration}
+                          onChange={(e) => setEditFormData({...editFormData, registration: e.target.value})}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Session</label>
+                        <input
+                          type="text"
+                          value={editFormData.session}
+                          onChange={(e) => setEditFormData({...editFormData, session: e.target.value})}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                        />
+                      </div>
+                    </div>
                   </div>
                 </div>
 

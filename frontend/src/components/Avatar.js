@@ -8,10 +8,9 @@ const Avatar = ({ image, name, size = 'md', className = '' }) => {
     setImgError(false);
     // Handle relative URLs
     if (image && (image.startsWith('/media') || image.startsWith('/static')) && !image.startsWith('http')) {
-        // Assume backend is on port 8000 if not specified otherwise, 
-        // or try to extract from env if available, but for now robustly handling the common case
-        // Ideally this comes from a config
-        const backendUrl = process.env.REACT_APP_BACKEND_URL || window.location.origin;
+      const apiUrl = process.env.REACT_APP_API_URL || '';
+      const derivedBackendUrl = apiUrl ? apiUrl.replace(/\/api\/?$/, '') : '';
+      const backendUrl = process.env.REACT_APP_BACKEND_URL || derivedBackendUrl || window.location.origin;
         setCurrentImage(`${backendUrl}${image}`);
     } else {
         setCurrentImage(image);

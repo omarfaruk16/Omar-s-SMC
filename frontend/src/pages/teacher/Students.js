@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { teacherAPI, studentAPI, attendanceAPI, markAPI, teacherAssignmentAPI } from '../../services/api';
 import { useToast } from '../../context/ToastContext';
+import Avatar from '../../components/Avatar';
 
 const TeacherStudents = () => {
   const toast = useToast();
@@ -116,8 +117,13 @@ const TeacherStudents = () => {
             <div className="divide-y max-h-[480px] overflow-auto">
               {students.map(s => (
                 <button key={s.id} onClick={()=>setSelectedStudent(s)} className={`w-full text-left p-3 ${selectedStudent?.id===s.id ? 'bg-blue-50' : ''}`}>
-                  <div className="font-medium">{s.user.first_name} {s.user.last_name}</div>
-                  <div className="text-xs text-gray-500">{s.user.email}</div>
+                  <div className="flex items-center gap-3">
+                    <Avatar image={s.user?.image} name={`${s.user?.first_name || ''} ${s.user?.last_name || ''}`} size="sm" />
+                    <div>
+                      <div className="font-medium">{s.user.first_name} {s.user.last_name}</div>
+                      <div className="text-xs text-gray-500">{s.user.email}</div>
+                    </div>
+                  </div>
                 </button>
               ))}
             </div>

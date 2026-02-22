@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { attendanceAPI, studentAPI, teacherAPI, teacherAssignmentAPI } from '../../services/api';
 import { useToast } from '../../context/ToastContext';
+import Avatar from '../../components/Avatar';
 
 const TeacherAttendance = () => {
   const toast = useToast();
@@ -123,9 +124,12 @@ const TeacherAttendance = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
               {students.map(s => (
                 <button key={s.id} onClick={()=>setPresent(p=>({...p,[s.id]: !p[s.id]}))} className={`flex items-center justify-between p-3 rounded border text-left ${present[s.id] ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
-                  <div>
-                    <p className="font-semibold">{s.user.first_name} {s.user.last_name}</p>
-                    <p className="text-xs text-gray-500">{s.user.email}</p>
+                  <div className="flex items-center gap-3">
+                    <Avatar image={s.user?.image} name={`${s.user?.first_name || ''} ${s.user?.last_name || ''}`} size="sm" />
+                    <div>
+                      <p className="font-semibold">{s.user.first_name} {s.user.last_name}</p>
+                      <p className="text-xs text-gray-500">{s.user.email}</p>
+                    </div>
                   </div>
                   <span className={`text-xs px-2 py-0.5 rounded ${present[s.id] ? 'bg-green-200 text-green-900' : 'bg-red-200 text-red-900'}`}>{present[s.id] ? 'Present' : 'Absent'}</span>
                 </button>

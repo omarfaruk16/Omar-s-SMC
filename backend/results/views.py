@@ -1,6 +1,7 @@
 from rest_framework import viewsets
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
+from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from .models import Result
 from .serializers import ResultSerializer
 
@@ -9,6 +10,7 @@ class ResultViewSet(viewsets.ModelViewSet):
     """ViewSet for Result management"""
     queryset = Result.objects.all()
     serializer_class = ResultSerializer
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
     
     def get_permissions(self):
         # Allow public access to list and retrieve active results

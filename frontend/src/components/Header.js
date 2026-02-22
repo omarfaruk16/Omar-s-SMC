@@ -186,6 +186,44 @@ const Header = () => {
                  {canShowAdmission && <Link to="/admission" className="block py-2 text-green-600 font-bold">Admission</Link>}
              </div>
         )}
+        
+        {/* Notice Ticker */}
+        {!loading && notices.length > 0 && (
+          <div className="bg-red-600 text-white py-2">
+            <div className="container mx-auto px-4">
+              <div className="flex items-center">
+                <span className="bg-white text-red-600 px-3 py-1 rounded text-xs font-bold mr-4 flex-shrink-0">
+                  RECENT NOTICES
+                </span>
+                <div className="overflow-hidden flex-grow">
+                  <div className="animate-marquee whitespace-nowrap">
+                    {notices.map((notice) => (
+                      <React.Fragment key={notice.id}>
+                        <Link to={`/notices/${notice.id}`} className="inline-block mx-6 hover:underline">
+                          • {notice.title}
+                        </Link>
+                      </React.Fragment>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+        <style>{`
+          @keyframes marquee {
+            0% {
+              transform: translateX(0);
+            }
+            100% {
+              transform: translateX(-50%);
+            }
+          }
+          .animate-marquee {
+            display: inline-block;
+            animation: marquee 20s linear infinite;
+          }
+        `}</style>
     </header>
   );
 };

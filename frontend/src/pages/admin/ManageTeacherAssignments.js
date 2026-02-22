@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { teacherAPI, teacherAssignmentAPI, subjectAPI, classAPI } from '../../services/api';
 import { useToast } from '../../context/ToastContext';
+import Avatar from '../../components/Avatar';
 
 const ManageTeacherAssignments = () => {
   const toast = useToast();
@@ -149,11 +150,18 @@ const ManageTeacherAssignments = () => {
                   {/* Teacher Header */}
                   <div className="px-6 py-4 bg-gradient-to-r from-blue-50 to-purple-50 border-b">
                     <div className="flex items-center justify-between">
-                      <div>
-                        <h3 className="text-xl font-bold text-gray-900">
-                          {teacher.user.first_name} {teacher.user.last_name}
-                        </h3>
-                        <p className="text-sm text-gray-600">{teacher.user.email}</p>
+                      <div className="flex items-center gap-3">
+                        <Avatar
+                          image={teacher.user?.image}
+                          name={`${teacher.user?.first_name || ''} ${teacher.user?.last_name || ''}`}
+                          size="md"
+                        />
+                        <div>
+                          <h3 className="text-xl font-bold text-gray-900">
+                            {teacher.user.first_name} {teacher.user.last_name}
+                          </h3>
+                          <p className="text-sm text-gray-600">{teacher.user.email}</p>
+                        </div>
                       </div>
                       <div className="flex items-center space-x-2">
                         <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium">

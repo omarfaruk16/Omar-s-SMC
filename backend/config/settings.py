@@ -16,7 +16,12 @@ SECRET_KEY = config('SECRET_KEY', default="django-insecure-@a1%oy8d4mf+1id_4j+17
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = config('DEBUG', default=True, cast=bool)
-SERVE_MEDIA = config('SERVE_MEDIA', default=True, cast=bool)
+
+# Get the environment mode (development or production)
+MODE = config('MODE', default='development')
+
+# In production, let Nginx serve media files; in development, Django serves them
+SERVE_MEDIA = config('SERVE_MEDIA', default=(MODE != 'production'), cast=bool)
 
 ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost,127.0.0.1').split(',')
 
@@ -71,6 +76,8 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
+                "django.template.context_processors.static",
+                "django.template.context_processors.media",
             ],
         },
     },
@@ -82,11 +89,8 @@ WSGI_APPLICATION = "config.wsgi.application"
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
-# Get the environment mode (development or production)
-DATABASE_MODE = config('MODE', default='development')
-
 # Configure database based on the mode
-if DATABASE_MODE == 'production':
+if MODE == 'production':
     # PostgreSQL for production
     DATABASES = {
         'default': {

@@ -2,6 +2,7 @@ from rest_framework import viewsets, status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.decorators import action
+from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from .models import ClassMaterial, MaterialAttachment
 from .serializers import ClassMaterialSerializer, ClassMaterialCreateSerializer, MaterialAttachmentSerializer
 from users.models import Teacher
@@ -11,6 +12,7 @@ class ClassMaterialViewSet(viewsets.ModelViewSet):
     """ViewSet for ClassMaterial management"""
     queryset = ClassMaterial.objects.all()
     permission_classes = [IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
     
     def get_serializer_class(self):
         if self.action in ['create', 'update', 'partial_update']:

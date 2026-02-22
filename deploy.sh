@@ -32,12 +32,19 @@ pip install -r requirements.txt
 
 # Ensure we have a .env file
 if [ ! -f ".env" ]; then
-    if [ -f ".env.example.prod" ]; then
-        echo "⚠️ .env not found. Copying .env.example.prod to .env"
-        cp .env.example.prod .env
+    if [ -f ".env.example.production" ]; then
+        echo "⚠️ .env not found. Copying .env.example.production to .env"
+        cp .env.example.production .env
         echo "⚠️ PLEASE UPDATE .env WITH YOUR ACTUAL SECRETS!"
+        echo "   Required variables:"
+        echo "   - SECRET_KEY (generate with: python -c 'from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())')"
+        echo "   - DEBUG=False"
+        echo "   - SERVE_MEDIA=False (production uses Nginx for media)"
+        echo "   - MODE=production"
+        echo "   - CORS_ALLOWED_ORIGINS (your domain)"
+        echo "   - CSRF_TRUSTED_ORIGINS (your domain)"
     else
-        echo "❌ Error: No .env file and no .env.example.prod found!"
+        echo "❌ Error: No .env file and no .env.example.production found!"
         exit 1
     fi
 fi
@@ -51,8 +58,18 @@ python manage.py collectstatic --no-input
 echo "Creating/Updating admin user (securely)..."
 python create_admin.py
 
+echo "🔒 Fixing backend permissions for Nginx media serving..."
+# Ensure media and static files are readable by Nginx (www-data)
+sudo chmod -R 755 "$BACKEND_DIR/media/"
+sudo chmod -R 755 "$BACKEND_DIR/staticfiles/"
+sudo chown -R :www-data "$BACKEND_DIR/media/"
+sudo chown -R :www-data "$BACKEND_DIR/staticfiles/"
+
 echo "Restarting Gunicorn..."
 sudo systemctl restart gunicorn
+
+# Wait for Gunicorn to be ready
+sleep 2
 
 # 3. Frontend Deployment
 echo "⚛️  Deploying Frontend..."
@@ -69,16 +86,26 @@ echo "Deploying build artifacts..."
 sudo rm -rf /var/www/omar-smc/*
 sudo cp -r build/* /var/www/omar-smc/
 
-echo "Setting permissions..."
-sudo chown -R www-data:www-data /var/www/omar-smc
-# Also fix backend static/media permissions if needed
-sudo chmod -R o+rx "$BACKEND_DIR/staticfiles/"
-sudo chmod -R o+rx "$BACKEND_DIR/media/"
+echo "Setting frontend permissions..."
+sudo chown -R www-data:www-data /var/www/omar-smc/
 
 # 4. Final Restart
 echo "🔄 Restarting Nginx..."
 sudo systemctl restart nginx
 
+# 5. Health Check
+echo ""
+echo "⏳ Waiting for services to start..."
+sleep 3
+
 echo "✅ Deployment completed successfully!"
-echo "   Backend Service: $(systemctl is-active gunicorn)"
-echo "   Nginx Service:   $(systemctl is-active nginx)"
+echo ""
+echo "Service Status:"
+echo "  Backend Service:  $(systemctl is-active gunicorn)"
+echo "  Nginx Service:    $(systemctl is-active nginx)"
+echo ""
+echo "📋 Verification Steps:"
+echo "  - Check backend logs: journalctl -u gunicorn -n 50"
+echo "  - Check Nginx logs: tail -f /var/log/nginx/error.log"
+echo "  - Test API: curl https://rmmdc.edu.bd/api/notices/"
+echo "  - Test media serving: curl https://rmmdc.edu.bd/health/"

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { teacherAPI, teacherAssignmentAPI, subjectAPI, classAPI } from '../../services/api';
 import { useToast } from '../../context/ToastContext';
+import Avatar from '../../components/Avatar';
 
 const TeacherAssignments = () => {
   const toast = useToast();
@@ -215,7 +216,14 @@ const TeacherAssignments = () => {
                   {assignments.map(a => (
                     <tr key={a.id}>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        {a.teacher_name}
+                        <div className="flex items-center gap-2">
+                          <Avatar
+                            image={teachers.find((t) => t.id === a.teacher)?.user?.image}
+                            name={a.teacher_name || 'Teacher'}
+                            size="sm"
+                          />
+                          <span>{a.teacher_name}</span>
+                        </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                         {a.subject_name}

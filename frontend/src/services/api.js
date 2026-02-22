@@ -206,7 +206,7 @@ export const studentAPI = {
   changeClass: (id, class_id) =>
     api.post(`/users/students/${id}/change_class/`, { class_id }),
   updateRoll: (id, roll_number) => api.patch(`/users/students/${id}/update_roll/`, { roll_number }),
-  update: (id, data) => api.put(`/users/students/${id}/`, data),
+  update: (id, data) => api.patch(`/users/students/${id}/`, data),
   delete: (id) => api.delete(`/users/students/${id}/`),
   getByClass: (class_id) => api.get('/users/students/by_class/', { params: { class_id } }),
   toggleStatus: (id, status) => api.post(`/users/students/${id}/toggle_status/`, { status }),

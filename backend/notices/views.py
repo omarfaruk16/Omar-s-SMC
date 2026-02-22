@@ -1,6 +1,7 @@
 from rest_framework import viewsets
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
+from rest_framework.parsers import MultiPartParser, FormParser
 from .models import Notice
 from django.db import models
 from .serializers import NoticeSerializer
@@ -10,6 +11,7 @@ class NoticeViewSet(viewsets.ModelViewSet):
     """ViewSet for Notice management"""
     queryset = Notice.objects.all()
     serializer_class = NoticeSerializer
+    parser_classes = [MultiPartParser, FormParser]
     
     def get_permissions(self):
         # Allow public access to list and retrieve active notices

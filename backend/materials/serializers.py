@@ -4,11 +4,21 @@ from .models import ClassMaterial, MaterialAttachment
 
 class MaterialAttachmentSerializer(serializers.ModelSerializer):
     """Serializer for MaterialAttachment model"""
+    file = serializers.SerializerMethodField()
 
     class Meta:
         model = MaterialAttachment
         fields = ['id', 'attachment_type', 'file', 'url', 'title', 'created_at']
         read_only_fields = ['id', 'created_at']
+
+    def get_file(self, obj):
+        request = self.context.get('request')
+        if obj.file:
+            url = obj.file.url
+            if request is not None:
+                return request.build_absolute_uri(url)
+            return url
+        return None
 
 
 class ClassMaterialSerializer(serializers.ModelSerializer):
@@ -16,6 +26,7 @@ class ClassMaterialSerializer(serializers.ModelSerializer):
     teacher_name = serializers.SerializerMethodField()
     class_name = serializers.SerializerMethodField()
     subject_name = serializers.SerializerMethodField()
+    file = serializers.SerializerMethodField()
     attachments = MaterialAttachmentSerializer(many=True, read_only=True)
 
     class Meta:
@@ -33,6 +44,15 @@ class ClassMaterialSerializer(serializers.ModelSerializer):
 
     def get_subject_name(self, obj):
         return obj.subject.name if obj.subject else None
+
+    def get_file(self, obj):
+        request = self.context.get('request')
+        if obj.file:
+            url = obj.file.url
+            if request is not None:
+                return request.build_absolute_uri(url)
+            return url
+        return None
 
 
 class ClassMaterialCreateSerializer(serializers.ModelSerializer):

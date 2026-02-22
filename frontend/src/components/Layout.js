@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { useLocation } from 'react-router-dom';
 import Header from './Header';
 import AuthenticatedHeader from './AuthenticatedHeader';
 import Sidebar from './Sidebar';
@@ -7,14 +8,16 @@ import Footer from './Footer';
 
 const Layout = ({ children }) => {
   const { isAuthenticated } = useAuth();
+  const location = useLocation();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);
   };
 
-  // Authenticated Layout: Sidebar + Main Content Area
-  if (isAuthenticated) {
+  // Authenticated Layout: show only for dashboard routes; public pages keep public header
+  const isDashboardRoute = /^\/(admin|teacher|student)(\/|$)/.test(location.pathname);
+  if (isAuthenticated && isDashboardRoute) {
     return (
       <div className="flex min-h-screen bg-gray-50">
         <Sidebar 

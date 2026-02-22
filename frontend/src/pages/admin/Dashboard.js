@@ -2,8 +2,11 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { teacherAPI, studentAPI, classAPI, noticeAPI, attendanceAPI, examAPI, teacherAssignmentAPI } from '../../services/api';
 import { useToast } from '../../context/ToastContext';
+import { useAuth } from '../../context/AuthContext';
+import Avatar from '../../components/Avatar';
 
 const Dashboard = () => {
+  const { user } = useAuth();
   const toast = useToast();
   const [stats, setStats] = useState({
     totalTeachers: 0,
@@ -102,9 +105,16 @@ const Dashboard = () => {
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 py-8">
       <div className="container mx-auto px-4">
         <div className="mb-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div>
-            <h1 className="text-4xl font-bold text-gray-900 mb-2">Admin Dashboard</h1>
-            <p className="text-gray-600">Overview of your school management system</p>
+          <div className="flex items-center gap-3">
+            <Avatar
+              image={user?.image}
+              name={`${user?.first_name || ''} ${user?.last_name || ''}`}
+              size="lg"
+            />
+            <div>
+              <h1 className="text-4xl font-bold text-gray-900 mb-2">Admin Dashboard</h1>
+              <p className="text-gray-600">Overview of your school management system</p>
+            </div>
           </div>
         </div>
 

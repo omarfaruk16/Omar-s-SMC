@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { examAPI, studentAPI, resultSubmissionAPI, teacherAssignmentAPI } from '../../services/api';
 import { useToast } from '../../context/ToastContext';
+import Avatar from '../../components/Avatar';
 
 const TeacherResults = () => {
     const toast = useToast();
@@ -190,7 +191,12 @@ const TeacherResults = () => {
                                         {students.map(std => (
                                             <tr key={std.id}>
                                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{std.roll_number || '-'}</td>
-                                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{std.user.first_name} {std.user.last_name}</td>
+                                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                                    <div className="flex items-center gap-2">
+                                                        <Avatar image={std.user?.image} name={`${std.user?.first_name || ''} ${std.user?.last_name || ''}`} size="sm" />
+                                                        <span>{std.user.first_name} {std.user.last_name}</span>
+                                                    </div>
+                                                </td>
                                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                                     <input 
                                                         type="number" 

@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import Calendar from '../../components/Calendar';
 import Modal from '../../components/Modal';
+import Avatar from '../../components/Avatar';
 import { attendanceAPI, timetableAPI, examAPI, markAPI, admissionAPI, studentAPI } from '../../services/api';
 import { useToast } from '../../context/ToastContext';
 
@@ -242,7 +243,14 @@ const StudentDashboard = () => {
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-indigo-50 py-8">
       <div className="container mx-auto px-4">
         <div className="mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">Student Dashboard</h1>
+          <div className="flex items-center gap-3 mb-2">
+            <Avatar
+              image={user?.image}
+              name={`${user?.first_name || ''} ${user?.last_name || ''}`}
+              size="lg"
+            />
+            <h1 className="text-4xl font-bold text-gray-900">Student Dashboard</h1>
+          </div>
           <p className="text-gray-600">Welcome back, {user?.first_name}! Here's your overview</p>
         </div>
 

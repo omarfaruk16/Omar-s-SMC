@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { publicAPI } from '../services/api';
+import Avatar from '../components/Avatar';
 
 const Teachers = () => {
   const [teachers, setTeachers] = useState([]);
@@ -36,9 +37,7 @@ const Teachers = () => {
             {teachers.map((teacher) => (
               <div key={teacher.id} className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition">
                 <div className="flex items-center mb-4">
-                  <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 font-bold text-xl">
-                    {teacher.full_name?.[0] || 'T'}
-                  </div>
+                  <Avatar image={teacher.image} name={teacher.full_name || 'Teacher'} size="2xl" />
                   <div className="ml-4">
                     <h3 className="text-lg font-bold text-gray-800">{teacher.full_name}</h3>
                     {teacher.assigned_classes?.length > 0 && (
@@ -48,11 +47,6 @@ const Teachers = () => {
                     )}
                   </div>
                 </div>
-                {teacher.image && (
-                  <div className="mt-2">
-                    <img src={teacher.image} alt={teacher.full_name} className="w-full h-32 object-cover rounded" />
-                  </div>
-                )}
               </div>
             ))}
           </div>
