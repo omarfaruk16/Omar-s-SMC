@@ -319,6 +319,10 @@ class TeacherViewSet(viewsets.ModelViewSet):
             if field in data:
                 setattr(user, field, data.get(field))
 
+        # Handle image upload from multipart form-data
+        if 'image' in request.FILES:
+            user.image = request.FILES['image']
+
         password = data.pop('password', None)
         if password:
             user.set_password(password)
@@ -435,6 +439,10 @@ class StudentViewSet(viewsets.ModelViewSet):
         for field in user_fields:
             if field in data:
                 setattr(user, field, data.get(field))
+
+        # Handle image upload from multipart form-data
+        if 'image' in request.FILES:
+            user.image = request.FILES['image']
 
         password = data.pop('password', None)
         if password:
