@@ -12,3 +12,10 @@ __pycache__/
 .env.production.local
 *.env
 !.env.example*
+
+# Media uploads — ignore file contents, keep directory structure
+backend/media/*/**
+backend/media/*
+!backend/media/
+!backend/media/**/
+!backend/media/**/.gitkeep
