@@ -3,6 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { teacherAPI, teacherAssignmentAPI, classAPI, subjectAPI } from '../../services/api'; 
 import { useToast } from '../../context/ToastContext';
 import Avatar from '../../components/Avatar';
+import { DESIGNATION_OPTIONS } from '../../constants/designations';
+import { FaEye, FaEyeSlash } from 'react-icons/fa';
 
 const TeacherEdit = () => {
   const { id } = useParams();
@@ -33,6 +35,8 @@ const TeacherEdit = () => {
     class_id: '',
     subject_id: ''
   });
+  
+  const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
     fetchData();
@@ -228,14 +232,23 @@ const TeacherEdit = () => {
                       </div>
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-1">New Password (optional)</label>
-                          <input
-                          type="password"
-                          name="password"
-                          value={formData.password}
-                          onChange={handleProfileChange}
-                          className="w-full px-3 py-2 border rounded-lg"
-                          placeholder="Leave blank to keep current password"
-                          />
+                          <div className="relative">
+                            <input
+                              type={showPassword ? "text" : "password"}
+                              name="password"
+                              value={formData.password}
+                              onChange={handleProfileChange}
+                              className="w-full px-3 py-2 pr-10 border rounded-lg"
+                              placeholder="Leave blank to keep current password"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setShowPassword(!showPassword)}
+                              className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
+                            >
+                              {showPassword ? <FaEyeSlash /> : <FaEye />}
+                            </button>
+                          </div>
                         </div>
                       <div>
                           <label className="block text-sm font-medium text-gray-700 mb-1">Teacher ID</label>
@@ -243,7 +256,14 @@ const TeacherEdit = () => {
                       </div>
                       <div>
                           <label className="block text-sm font-medium text-gray-700 mb-1">Designation</label>
-                          <input type="text" name="designation" value={formData.designation} onChange={handleProfileChange} className="w-full px-3 py-2 border rounded-lg" />
+                          <select name="designation" value={formData.designation} onChange={handleProfileChange} className="w-full px-3 py-2 border rounded-lg">
+                            <option value="">Select a designation</option>
+                            {DESIGNATION_OPTIONS.map((option) => (
+                              <option key={option} value={option}>
+                                {option}
+                              </option>
+                            ))}
+                          </select>
                       </div>
                       <div>
                           <label className="block text-sm font-medium text-gray-700 mb-1">NID</label>

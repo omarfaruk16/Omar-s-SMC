@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { publicAPI } from '../services/api';
-import Avatar from '../components/Avatar';
+import TeacherCard from '../components/TeacherCard';
+import { HEAD_TEACHER_DESIGNATION } from '../constants/designations';
 
 const Teachers = () => {
   const [teachers, setTeachers] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [authRequired, setAuthRequired] = useState(false);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     fetchTeachers();
@@ -13,47 +14,114 @@ const Teachers = () => {
 
   const fetchTeachers = async () => {
     try {
+      setLoading(true);
+      setError('');
       const response = await publicAPI.getApprovedTeachers();
-      setTeachers(response.data);
+      setTeachers(response.data || []);
     } catch (error) {
-      if (error.response?.status === 401) setAuthRequired(true);
       console.error('Error fetching teachers:', error);
+      setError('Failed to load teachers. Please try again later.');
     } finally {
       setLoading(false);
     }
   };
 
+  // Separate Head Teachers from others
+  const headTeachers = teachers.filter(
+    (teacher) => teacher.designation === HEAD_TEACHER_DESIGNATION
+  );
+  const otherTeachers = teachers.filter(
+    (teacher) => teacher.designation !== HEAD_TEACHER_DESIGNATION
+  );
+
   return (
-    <div className="min-h-screen bg-gray-50 py-12">
-      <div className="container mx-auto px-4">
-        <h1 className="text-4xl font-bold text-gray-900 mb-8">Our Teachers</h1>
+    <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-7xl mx-auto">
+        {/* Page Header */}
+        <div className="text-center mb-12">
+          <h1 className="text-4xl font-bold text-gray-900 mb-2">Our Teachers</h1>
+          <p className="text-lg text-gray-600">
+            Meet our dedicated team of educators
+          </p>
+        </div>
 
         {loading ? (
           <div className="text-center py-12">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+            <div className="inline-block">
+              <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600"></div>
+            </div>
+            <p className="mt-4 text-gray-600">Loading teachers...</p>
           </div>
-        ) : teachers.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {teachers.map((teacher) => (
-              <div key={teacher.id} className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition">
-                <div className="flex items-center mb-4">
-                  <Avatar image={teacher.image} name={teacher.full_name || 'Teacher'} size="2xl" />
-                  <div className="ml-4">
-                    <h3 className="text-lg font-bold text-gray-800">{teacher.full_name}</h3>
-                    {teacher.assigned_classes?.length > 0 && (
-                      <p className="text-sm text-gray-600">
-                        {teacher.assigned_classes.map(c=>`${c.name}${c.section?`-${c.section}`:''}`).join(', ')}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              </div>
-            ))}
+        ) : error ? (
+          <div className="max-w-md w-full mx-auto bg-white rounded-lg shadow-md p-8 text-center">
+            <svg
+              className="mx-auto h-12 w-12 text-red-600 mb-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 8v4m0 4v.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
+            </svg>
+            <h2 className="text-xl font-bold text-gray-900 mb-2">Oops!</h2>
+            <p className="text-gray-600">{error}</p>
+          </div>
+        ) : teachers.length === 0 ? (
+          <div className="text-center py-12">
+            <p className="text-gray-600 text-lg">No teachers found.</p>
           </div>
         ) : (
-          <div className="text-center py-12 bg-white rounded-lg">
-            <p className="text-gray-500">No teachers available at the moment.</p>
-          </div>
+          <>
+            {/* Head Teachers Section */}
+            {headTeachers.length > 0 && (
+              <div className="mb-16">
+                <h2 className="text-2xl font-bold text-gray-900 mb-8 text-center">
+                  Leadership
+                </h2>
+                <div
+                  className={`grid gap-4 mb-8 ${
+                    headTeachers.length === 1
+                      ? 'grid-cols-1 sm:grid-cols-1 md:grid-cols-1 max-w-xs mx-auto'
+                      : headTeachers.length === 2
+                      ? 'grid-cols-1 sm:grid-cols-2 max-w-2xl mx-auto'
+                      : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3'
+                  }`}
+                >
+                  {headTeachers.map((teacher) => (
+                    <TeacherCard
+                      key={teacher.id}
+                      teacher={teacher}
+                      isHeadTeacher={true}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* All Other Teachers Section */}
+            {otherTeachers.length > 0 && (
+              <div>
+                {headTeachers.length > 0 && (
+                  <h2 className="text-2xl font-bold text-gray-900 mb-8 text-center">
+                    Faculty
+                  </h2>
+                )}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
+                  {otherTeachers.map((teacher) => (
+                    <TeacherCard
+                      key={teacher.id}
+                      teacher={teacher}
+                      isHeadTeacher={false}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>

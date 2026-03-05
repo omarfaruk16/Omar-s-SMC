@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { classAPI, subjectAPI } from '../services/api';
+import { FaEye, FaEyeSlash } from 'react-icons/fa';
 
 const StudentRegister = () => {
   const [formData, setFormData] = useState({
@@ -56,6 +57,8 @@ const StudentRegister = () => {
   const [success, setSuccess] = useState(false);
   const [admissionFormInfo, setAdmissionFormInfo] = useState(null);
   const [downloadOpened, setDownloadOpened] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showPassword2, setShowPassword2] = useState(false);
   const { registerStudent, isAdmin } = useAuth();
   const navigate = useNavigate();
 
@@ -1032,17 +1035,26 @@ const StudentRegister = () => {
                   <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
                     Password *
                   </label>
-                  <input
-                    id="password"
-                    name="password"
-                    type="password"
-                    autoComplete="new-password"
-                    required
-                    value={formData.password}
-                    onChange={handleChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="Minimum 8 characters"
-                  />
+                  <div className="relative">
+                    <input
+                      id="password"
+                      name="password"
+                      type={showPassword ? "text" : "password"}
+                      autoComplete="new-password"
+                      required
+                      value={formData.password}
+                      onChange={handleChange}
+                      className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                      placeholder="Minimum 8 characters"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
+                    >
+                      {showPassword ? <FaEyeSlash /> : <FaEye />}
+                    </button>
+                  </div>
                 </div>
 
                 {/* Confirm Password */}
@@ -1050,17 +1062,26 @@ const StudentRegister = () => {
                   <label htmlFor="password2" className="block text-sm font-medium text-gray-700 mb-1">
                     Confirm Password *
                   </label>
-                  <input
-                    id="password2"
-                    name="password2"
-                    type="password"
-                    autoComplete="new-password"
-                    required
-                    value={formData.password2}
-                    onChange={handleChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="Re-enter password"
-                  />
+                  <div className="relative">
+                    <input
+                      id="password2"
+                      name="password2"
+                      type={showPassword2 ? "text" : "password"}
+                      autoComplete="new-password"
+                      required
+                      value={formData.password2}
+                      onChange={handleChange}
+                      className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                      placeholder="Re-enter password"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword2(!showPassword2)}
+                      className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
+                    >
+                      {showPassword2 ? <FaEyeSlash /> : <FaEye />}
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>

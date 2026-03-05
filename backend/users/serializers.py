@@ -1,7 +1,6 @@
 from rest_framework import serializers
 from django.db import IntegrityError, transaction
 from django.contrib.auth import get_user_model
-from django.contrib.auth.password_validation import validate_password
 from .models import Teacher, Student
 from classes.models import Class
 from academics.models import Subject, TeacherSubjectAssignment
@@ -516,16 +515,24 @@ class TeacherSerializer(serializers.ModelSerializer):
 class PublicTeacherSerializer(serializers.ModelSerializer):
     """Public-safe teacher info for listing approved teachers"""
     full_name = serializers.SerializerMethodField()
+    email = serializers.SerializerMethodField()
+    phone = serializers.SerializerMethodField()
     image = serializers.SerializerMethodField()
     assigned_classes = serializers.SerializerMethodField()
     preferred_subject = serializers.SerializerMethodField()
 
     class Meta:
         model = Teacher
-        fields = ['id', 'full_name', 'image', 'designation', 'preferred_subject', 'assigned_classes']
+        fields = ['id', 'full_name', 'email', 'phone', 'image', 'designation', 'preferred_subject', 'assigned_classes']
 
     def get_full_name(self, obj):
         return obj.user.get_full_name() or obj.user.username
+
+    def get_email(self, obj):
+        return obj.user.email or None
+
+    def get_phone(self, obj):
+        return obj.user.phone or None
 
     def get_image(self, obj):
         if obj.user.image:
@@ -733,14 +740,14 @@ class UserProfileSerializer(serializers.ModelSerializer):
 
 
 class ChangePasswordSerializer(serializers.Serializer):
-    current_password = serializers.CharField(write_only=True)
+    current_password = serializers.CharField(write_only=True, required=False, allow_blank=True)
     new_password = serializers.CharField(write_only=True)
     new_password_confirm = serializers.CharField(write_only=True)
 
     def validate(self, attrs):
         if attrs['new_password'] != attrs['new_password_confirm']:
             raise serializers.ValidationError({'new_password_confirm': 'Passwords do not match.'})
-        validate_password(attrs['new_password'], self.context.get('user'))
+        # Allow weak passwords
         return attrs
 
 
@@ -762,5 +769,5 @@ class ResetPasswordSerializer(serializers.Serializer):
     def validate(self, attrs):
         if attrs['new_password'] != attrs['new_password_confirm']:
             raise serializers.ValidationError({'new_password_confirm': 'Passwords do not match.'})
-        validate_password(attrs['new_password'], self.context.get('user'))
+        # Allow weak passwords
         return attrs

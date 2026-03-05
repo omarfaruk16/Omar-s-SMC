@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { 
   FaChartPie, FaUserGraduate, FaChalkboardTeacher, 
   FaChalkboard, FaBook, FaBullhorn, FaMoneyBillWave, 
-  FaCertificate, FaClipboardList, FaFileAlt, FaPenFancy 
+  FaCertificate, FaClipboardList, FaFileAlt, FaPenFancy, FaUser 
 } from 'react-icons/fa';
 import { HiX } from 'react-icons/hi';
 
@@ -32,7 +32,9 @@ const Sidebar = ({ isOpen, onClose }) => {
     { path: '/admin/subjects', label: 'Subjects', icon: FaBook },
     { path: '/admin/notices', label: 'Notices', icon: FaBullhorn },
     { path: '/admin/fees', label: 'Fees', icon: FaMoneyBillWave },
+    { path: '/admin/admissions', label: 'Admissions', icon: FaPenFancy },
     { path: '/admin/testimonials', label: 'Testimonials', icon: FaCertificate },
+    { path: '/admin/profile', label: 'Profile', icon: FaUser },
   ];
 
   // Teacher Navigation Config
@@ -42,6 +44,7 @@ const Sidebar = ({ isOpen, onClose }) => {
     { path: '/teacher/attendance', label: 'Attendance', icon: FaClipboardList },
     { path: '/teacher/results', label: 'Results', icon: FaFileAlt },
     { path: '/teacher/materials', label: 'Materials', icon: FaBook },
+    { path: '/teacher/profile', label: 'Profile', icon: FaUser },
     // Missing: notices (using public for now if needed), notifications
   ];
 
@@ -56,6 +59,7 @@ const Sidebar = ({ isOpen, onClose }) => {
     { path: '/student/fees', label: 'Fees', icon: FaMoneyBillWave },
     { path: '/admission', label: 'Admission Form', icon: FaPenFancy },
     { path: '/student/testimonials', label: 'Testimonial', icon: FaCertificate },
+    { path: '/student/profile', label: 'Profile', icon: FaUser },
   ];
 
   let links = [];

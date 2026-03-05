@@ -145,8 +145,8 @@ class ChangePasswordView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
-        # Allow skipping password change if all fields are empty
-        if not request.data.get('current_password') and not request.data.get('new_password') and not request.data.get('new_password_confirm'):
+        # Allow skipping password change if new password fields are empty
+        if not request.data.get('new_password') and not request.data.get('new_password_confirm'):
             return Response({
                 'message': 'No password changes requested.'
             }, status=status.HTTP_200_OK)
@@ -155,10 +155,7 @@ class ChangePasswordView(APIView):
         serializer.is_valid(raise_exception=True)
 
         user = request.user
-        current_password = serializer.validated_data['current_password']
-        if not user.check_password(current_password):
-            return Response({'current_password': 'Current password is incorrect.'}, status=status.HTTP_400_BAD_REQUEST)
-
+        # No current password check needed - users can change without it
         user.set_password(serializer.validated_data['new_password'])
         user.save()
 

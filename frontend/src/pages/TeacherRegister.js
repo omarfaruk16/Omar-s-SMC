@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { classAPI, subjectAPI } from '../services/api';
+import { DESIGNATION_OPTIONS } from '../constants/designations';
+import { FaEye, FaEyeSlash } from 'react-icons/fa';
 
 const TeacherRegister = () => {
   const [formData, setFormData] = useState({
@@ -27,6 +29,8 @@ const TeacherRegister = () => {
   const [optionsLoading, setOptionsLoading] = useState(true);
   const [optionsError, setOptionsError] = useState('');
   const [registrationInfo, setRegistrationInfo] = useState(null);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showPassword2, setShowPassword2] = useState(false);
   const { registerTeacher, isAdmin } = useAuth();
   const navigate = useNavigate();
 
@@ -470,28 +474,23 @@ const TeacherRegister = () => {
                   <label htmlFor="designation" className="block text-sm font-medium text-gray-700 mb-1">
                     Designation *
                   </label>
-                  <input
+                  <select
                     id="designation"
                     name="designation"
-                    type="text"
                     required
-                    list="designation-options"
                     value={formData.designation}
                     onChange={handleChange}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="Assistant Teacher"
-                  />
-                  <datalist id="designation-options">
-                    <option value="Assistant Teacher" />
-                    <option value="Senior Teacher" />
-                    <option value="Head Teacher" />
-                    <option value="Lecturer" />
-                    <option value="Assistant Professor" />
-                    <option value="Associate Professor" />
-                    <option value="Professor" />
-                  </datalist>
+                  >
+                    <option value="">Select a designation</option>
+                    {DESIGNATION_OPTIONS.map((option) => (
+                      <option key={option} value={option}>
+                        {option}
+                      </option>
+                    ))}
+                  </select>
                   <p className="mt-2 text-xs text-gray-500">
-                    Start typing to use a suggested title or enter your exact designation.
+                    Choose your teaching designation from the list.
                   </p>
                 </div>
               </div>
@@ -703,17 +702,26 @@ const TeacherRegister = () => {
                   <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
                     Password *
                   </label>
-                  <input
-                    id="password"
-                    name="password"
-                    type="password"
-                    autoComplete="new-password"
-                    required
-                    value={formData.password}
-                    onChange={handleChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="Minimum 8 characters"
-                  />
+                  <div className="relative">
+                    <input
+                      id="password"
+                      name="password"
+                      type={showPassword ? "text" : "password"}
+                      autoComplete="new-password"
+                      required
+                      value={formData.password}
+                      onChange={handleChange}
+                      className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                      placeholder="Minimum 8 characters"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
+                    >
+                      {showPassword ? <FaEyeSlash /> : <FaEye />}
+                    </button>
+                  </div>
                 </div>
 
                 {/* Confirm Password */}
@@ -721,17 +729,26 @@ const TeacherRegister = () => {
                   <label htmlFor="password2" className="block text-sm font-medium text-gray-700 mb-1">
                     Confirm Password *
                   </label>
-                  <input
-                    id="password2"
-                    name="password2"
-                    type="password"
-                    autoComplete="new-password"
-                    required
-                    value={formData.password2}
-                    onChange={handleChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="Re-enter password"
-                  />
+                  <div className="relative">
+                    <input
+                      id="password2"
+                      name="password2"
+                      type={showPassword2 ? "text" : "password"}
+                      autoComplete="new-password"
+                      required
+                      value={formData.password2}
+                      onChange={handleChange}
+                      className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                      placeholder="Re-enter password"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword2(!showPassword2)}
+                      className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
+                    >
+                      {showPassword2 ? <FaEyeSlash /> : <FaEye />}
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>

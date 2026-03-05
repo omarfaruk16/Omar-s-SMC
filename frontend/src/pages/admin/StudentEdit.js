@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { studentAPI, classAPI } from '../../services/api'; 
 import { useToast } from '../../context/ToastContext';
+import { FaEye, FaEyeSlash } from 'react-icons/fa';
 
 const StudentEdit = () => {
     const { id } = useParams();
@@ -9,6 +10,7 @@ const StudentEdit = () => {
     const toast = useToast();
     const [loading, setLoading] = useState(true);
     const [classes, setClasses] = useState([]);
+    const [showPassword, setShowPassword] = useState(false);
     const [profileImage, setProfileImage] = useState(null);
     const [profileImagePreview, setProfileImagePreview] = useState('');
     const [currentImageUrl, setCurrentImageUrl] = useState('');
@@ -249,11 +251,23 @@ const StudentEdit = () => {
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">New Password (optional)</label>
-                                    <input 
-                                        type="password" name="password" value={formData.password} onChange={handleChange}
-                                        className="w-full px-3 py-2 border rounded-lg focus:ring-blue-500 focus:border-blue-500"
-                                        placeholder="Leave blank to keep current password"
-                                    />
+                                    <div className="relative">
+                                        <input 
+                                            type={showPassword ? "text" : "password"}
+                                            name="password" 
+                                            value={formData.password} 
+                                            onChange={handleChange}
+                                            className="w-full px-3 py-2 pr-10 border rounded-lg focus:ring-blue-500 focus:border-blue-500"
+                                            placeholder="Leave blank to keep current password"
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowPassword(!showPassword)}
+                                            className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
+                                        >
+                                            {showPassword ? <FaEyeSlash /> : <FaEye />}
+                                        </button>
+                                    </div>
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Name in Bangla</label>

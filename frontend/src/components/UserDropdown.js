@@ -20,6 +20,11 @@ const UserDropdown = () => {
     setIsOpen(!isOpen);
   };
 
+  const getProfilePath = () => {
+    if (!user?.role) return '/profile';
+    return `/${user.role}/profile`;
+  };
+
   const getRoleBadgeColor = (role) => {
     switch (role) {
       case 'admin':
@@ -93,30 +98,28 @@ const UserDropdown = () => {
           </div>
         </div>
 
-        {!isAdmin && (
-          <Link
-            to="/profile"
-            onClick={() => setIsOpen(false)}
-            className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
-          >
-            <div className="flex items-center space-x-2">
-              <svg
-                className="w-4 h-4 text-gray-400"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-                />
-              </svg>
-              <span>Profile</span>
-            </div>
-          </Link>
-        )}
+        <Link
+          to={getProfilePath()}
+          onClick={() => setIsOpen(false)}
+          className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+        >
+          <div className="flex items-center space-x-2">
+            <svg
+              className="w-4 h-4 text-gray-400"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+              />
+            </svg>
+            <span>Profile</span>
+          </div>
+        </Link>
 
         <button
           onClick={handleLogout}

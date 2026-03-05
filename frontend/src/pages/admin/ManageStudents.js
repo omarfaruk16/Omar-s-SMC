@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { studentAPI, classAPI, subjectAPI, examAPI } from '../../services/api';
 import { useToast } from '../../context/ToastContext';
 import Avatar from '../../components/Avatar';
+import { FaEye, FaEyeSlash } from 'react-icons/fa';
 
 const ManageStudents = () => {
   const toast = useToast();
@@ -19,6 +20,7 @@ const ManageStudents = () => {
   const [editFormData, setEditFormData] = useState({});
   const [classSubjects, setClassSubjects] = useState([]);
   const [recentExams, setRecentExams] = useState([]);
+  const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
     fetchData();
@@ -656,12 +658,21 @@ const ManageStudents = () => {
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Password (leave blank to keep)</label>
-                        <input
-                          type="password"
-                          value={editFormData.password}
-                          onChange={(e) => setEditFormData({...editFormData, password: e.target.value})}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                        />
+                        <div className="relative">
+                          <input
+                            type={showPassword ? "text" : "password"}
+                            value={editFormData.password}
+                            onChange={(e) => setEditFormData({...editFormData, password: e.target.value})}
+                            className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowPassword(!showPassword)}
+                            className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
+                          >
+                            {showPassword ? <FaEyeSlash /> : <FaEye />}
+                          </button>
+                        </div>
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Profile Image</label>

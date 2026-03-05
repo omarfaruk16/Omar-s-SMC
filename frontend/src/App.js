@@ -25,9 +25,9 @@ import LibraryInformation from './pages/LibraryInformation';
 import Login from './pages/Login';
 import TeacherRegister from './pages/TeacherRegister';
 import StudentRegister from './pages/StudentRegister';
-import ForgotPassword from './pages/ForgotPassword';
-import ResetPassword from './pages/ResetPassword';
-import Profile from './pages/Profile';
+import AdminProfile from './pages/admin/AdminProfile';
+import TeacherProfile from './pages/teacher/TeacherProfile';
+import StudentProfile from './pages/student/StudentProfile';
 
 // Admin Dashboard
 import AdminDashboard from './pages/admin/Dashboard';
@@ -35,6 +35,7 @@ import ManagePending from './pages/admin/ManagePending';
 import ManageUsers from './pages/admin/ManageUsers';
 import ManageStudents from './pages/admin/ManageStudents';
 import ManageTeachers from './pages/admin/ManageTeachers';
+import AdminAdmissions from './pages/admin/ManageAdmissionSubmissions';
 import TeacherDetails from './pages/admin/TeacherDetails';
 import StudentDetails from './pages/admin/StudentDetails';
 import ManageClasses from './pages/admin/ManageClasses';
@@ -103,8 +104,6 @@ function App() {
             <Route path="/login" element={<Login />} />
             <Route path="/register/teacher" element={<TeacherRegister />} />
             <Route path="/register/student" element={<StudentRegister />} />
-            <Route path="/forgot-password" element={<ForgotPassword />} />
-            <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/payment/success" element={<PaymentSuccess />} />
             <Route path="/payment/fail" element={<PaymentFail />} />
             <Route path="/payment/cancel" element={<PaymentCancel />} />
@@ -287,10 +286,26 @@ function App() {
               }
             />
             <Route
+              path="/admin/admissions"
+              element={
+                <PrivateRoute allowedRoles={['admin']}>
+                  <AdminAdmissions />
+                </PrivateRoute>
+              }
+            />
+            <Route
               path="/admin/testimonials"
               element={
                 <PrivateRoute allowedRoles={['admin']}>
                   <ManageTestimonials />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/admin/profile"
+              element={
+                <PrivateRoute allowedRoles={['admin']}>
+                  <AdminProfile />
                 </PrivateRoute>
               }
             />
@@ -349,6 +364,14 @@ function App() {
               element={
                 <PrivateRoute allowedRoles={['teacher']}>
                   <TeacherTimetable />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/teacher/profile"
+              element={
+                <PrivateRoute allowedRoles={['teacher']}>
+                  <TeacherProfile />
                 </PrivateRoute>
               }
             />
@@ -419,10 +442,10 @@ function App() {
               }
             />
             <Route
-              path="/profile"
+              path="/student/profile"
               element={
-                <PrivateRoute allowedRoles={['admin', 'teacher', 'student']}>
-                  <Profile />
+                <PrivateRoute allowedRoles={['student']}>
+                  <StudentProfile />
                 </PrivateRoute>
               }
             />
