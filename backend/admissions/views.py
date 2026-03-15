@@ -1,3 +1,4 @@
+import logging
 import json
 import uuid
 from decimal import Decimal, InvalidOperation
@@ -22,6 +23,9 @@ from .models import AdmissionFormTemplate, AdmissionFormSubmission, AdmissionPay
 from .permissions import IsAdminOrReadOnly
 from .serializers import AdmissionFormSubmissionSerializer, AdmissionFormTemplateSerializer
 from .services import generate_admission_form_pdf, resolve_registration_download_token
+
+
+logger = logging.getLogger(__name__)
 
 
 def _sslcommerz_base_url():
@@ -305,10 +309,20 @@ class AdmissionFormInitView(APIView):
         if not request.user.is_authenticated or request.user.role != "student":
             return Response({"detail": "Student access required."}, status=status.HTTP_403_FORBIDDEN)
 
+        logger.info(
+            "Admission payment init requested: user_id=%s subject_selection=%s selected_count=%s",
+            request.user.id,
+            request.data.get("subject_selection") or request.data.get("selection_type"),
+            len(request.data.get("selected_subjects") or []),
+        )
+
         try:
             student = request.user.student_profile
         except Exception:
             return Response({"detail": "Student profile not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        if not student.student_class:
+            return Response({"detail": "Student class not assigned."}, status=status.HTTP_400_BAD_REQUEST)
 
         subject_selection = request.data.get("subject_selection") or request.data.get("selection_type")
         selected_subjects = request.data.get("selected_subjects") or []
@@ -325,8 +339,14 @@ class AdmissionFormInitView(APIView):
         if subject_selection not in selection_map:
             return Response({"detail": "Invalid subject_selection."}, status=status.HTTP_400_BAD_REQUEST)
 
-        class_subjects = Subject.objects.filter(classes=student.student_class).order_by("name")
+        class_subjects = Subject.objects.filter(class_assigned=student.student_class).order_by("name")
         class_subject_ids = set(class_subjects.values_list("id", flat=True))
+        logger.debug(
+            "Admission payment init class subjects resolved: user_id=%s class_id=%s subjects_count=%s",
+            request.user.id,
+            student.student_class_id,
+            len(class_subject_ids),
+        )
 
         if subject_selection == "all":
             selected_subjects = list(class_subject_ids)
@@ -334,8 +354,19 @@ class AdmissionFormInitView(APIView):
             expected_count = {"one": 1, "two": 2, "three": 3}[subject_selection]
             if not isinstance(selected_subjects, list) or len(selected_subjects) != expected_count:
                 return Response({"detail": f"Please select {expected_count} subject(s)."}, status=status.HTTP_400_BAD_REQUEST)
-            if any(int(sid) not in class_subject_ids for sid in selected_subjects):
+            try:
+                selected_subjects = [int(sid) for sid in selected_subjects]
+            except (TypeError, ValueError):
                 return Response({"detail": "Selected subjects are invalid."}, status=status.HTTP_400_BAD_REQUEST)
+            if any(sid not in class_subject_ids for sid in selected_subjects):
+                return Response({"detail": "Selected subjects are invalid."}, status=status.HTTP_400_BAD_REQUEST)
+
+        logger.debug(
+            "Admission payment init selection validated: user_id=%s selection=%s selected_subject_ids=%s",
+            request.user.id,
+            subject_selection,
+            selected_subjects,
+        )
         template_slug = request.data.get("template_slug")
         if template_slug:
             template = get_object_or_404(AdmissionFormTemplate, slug=template_slug)
@@ -380,6 +411,13 @@ class AdmissionFormInitView(APIView):
             transaction_id=tran_id,
             status="pending",
         )
+        logger.info(
+            "Admission payment intent created: intent_id=%s user_id=%s amount=%s tran_id=%s",
+            intent.id,
+            request.user.id,
+            amount,
+            tran_id,
+        )
 
         customer_name = f"{form_data.get('first_name', '')} {form_data.get('last_name', '')}".strip() or "Student"
         post_data = {
@@ -419,10 +457,20 @@ class AdmissionFormInitView(APIView):
             intent.gateway_payload = {"error": str(exc)}
             intent.status = "failed"
             intent.save(update_fields=["gateway_payload", "status"])
+            logger.exception(
+                "Admission payment gateway init failed: intent_id=%s tran_id=%s",
+                intent.id,
+                tran_id,
+            )
             return Response({"status": "fail", "message": "Failed to connect with SSLCOMMERZ"}, status=status.HTTP_502_BAD_GATEWAY)
 
         intent.gateway_payload = {"init_response": ssl_response}
         intent.save(update_fields=["gateway_payload"])
+        logger.debug(
+            "Admission payment gateway response received: intent_id=%s keys=%s",
+            intent.id,
+            list(ssl_response.keys()),
+        )
 
         gateway_url = ssl_response.get("GatewayPageURL")
         if gateway_url:

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 
 const ToastContext = createContext(null);
 
@@ -41,6 +41,19 @@ export const ToastProvider = ({ children }) => {
     errorFrom: (err, fallback, ttl) => push(normalizeError(err, fallback), 'error', ttl),
     info: (msg, ttl) => push(msg, 'info', ttl),
   };
+
+  useEffect(() => {
+    const onAppToast = (event) => {
+      const detail = event?.detail || {};
+      const message = normalizeError(detail.message, 'Something went wrong.');
+      const type = detail.type || 'error';
+      const ttl = Number.isInteger(detail.ttl) ? detail.ttl : 3000;
+      push(message, type, ttl);
+    };
+
+    window.addEventListener('app:toast', onAppToast);
+    return () => window.removeEventListener('app:toast', onAppToast);
+  }, [normalizeError, push]);
 
   return (
     <ToastContext.Provider value={api}>

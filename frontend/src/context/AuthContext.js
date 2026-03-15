@@ -1,5 +1,5 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
-import { authAPI, notificationAPI } from '../services/api';
+import { authAPI, notificationAPI, extractApiErrorMessage, resetSessionExpiredState } from '../services/api';
 import {
   getActiveSubscription,
   getOrCreateSubscription,
@@ -22,6 +22,18 @@ export const AuthProvider = ({ children }) => {
       setUser(JSON.parse(storedUser));
     }
     setLoading(false);
+  }, []);
+
+  useEffect(() => {
+    const handleSessionExpired = () => {
+      localStorage.removeItem('access_token');
+      localStorage.removeItem('refresh_token');
+      localStorage.removeItem('user');
+      setUser(null);
+    };
+
+    window.addEventListener('app:session-expired', handleSessionExpired);
+    return () => window.removeEventListener('app:session-expired', handleSessionExpired);
   }, []);
 
   useEffect(() => {
@@ -61,6 +73,7 @@ export const AuthProvider = ({ children }) => {
       localStorage.setItem('access_token', access);
       localStorage.setItem('refresh_token', refresh);
       localStorage.setItem('user', JSON.stringify(userData));
+      resetSessionExpiredState();
       setUser(userData);
 
       return { success: true, user: userData };
@@ -68,17 +81,15 @@ export const AuthProvider = ({ children }) => {
       console.error('Login error:', error);
       return {
         success: false,
-        error:
-          error.response?.data?.detail ||
-          error.response?.data?.error ||
-          error.response?.data?.message ||
-          'Login failed'
+        error: extractApiErrorMessage(error, 'Login failed')
       };
     }
   };
 
-  const logout = async () => {
-    if (user?.role === 'teacher' && isPushSupported()) {
+  const logout = async (options = {}) => {
+    const { skipPushCleanup = false } = options;
+
+    if (!skipPushCleanup && user?.role === 'teacher' && isPushSupported()) {
       try {
         const subscription = await getActiveSubscription();
         if (subscription) {
@@ -102,7 +113,7 @@ export const AuthProvider = ({ children }) => {
     } catch (error) {
       return { 
         success: false, 
-        error: error.response?.data || 'Registration failed' 
+        error: extractApiErrorMessage(error, 'Registration failed')
       };
     }
   };
@@ -114,7 +125,7 @@ export const AuthProvider = ({ children }) => {
     } catch (error) {
       return { 
         success: false, 
-        error: error.response?.data || 'Registration failed' 
+        error: extractApiErrorMessage(error, 'Registration failed')
       };
     }
   };
@@ -129,7 +140,7 @@ export const AuthProvider = ({ children }) => {
     } catch (error) {
       return { 
         success: false, 
-        error: error.response?.data || 'Update failed' 
+        error: extractApiErrorMessage(error, 'Update failed')
       };
     }
   };

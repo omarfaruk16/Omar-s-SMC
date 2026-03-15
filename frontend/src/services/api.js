@@ -10,6 +10,68 @@ const api = axios.create({
   baseURL: API_BASE_URL,
 });
 
+let sessionExpiredEmitted = false;
+
+const isHtmlString = (value) => (
+  typeof value === 'string' && /<\/?[a-z][\s\S]*>/i.test(value)
+);
+
+export const extractApiErrorMessage = (error, fallback = 'Request failed. Please try again.') => {
+  const responseData = error?.response?.data;
+
+  if (typeof responseData === 'string') {
+    if (isHtmlString(responseData)) {
+      const statusCode = error?.response?.status;
+      return statusCode ? `Server error (${statusCode}). Please try again.` : fallback;
+    }
+    return responseData;
+  }
+
+  if (responseData && typeof responseData === 'object') {
+    if (responseData.detail) return String(responseData.detail);
+    if (responseData.message) return String(responseData.message);
+    if (responseData.error) return String(responseData.error);
+
+    const firstKey = Object.keys(responseData)[0];
+    if (firstKey) {
+      const value = responseData[firstKey];
+      if (Array.isArray(value) && value.length > 0) return String(value[0]);
+      if (typeof value === 'string') return value;
+    }
+  }
+
+  if (typeof error?.message === 'string' && error.message) {
+    return error.message;
+  }
+
+  return fallback;
+};
+
+export const normalizeErrorPayloadForUi = (error) => {
+  const message = extractApiErrorMessage(error);
+
+  if (error?.response && isHtmlString(error.response.data || '')) {
+    error.response.data = { detail: message };
+  }
+
+  return { message, type: 'error', ttl: 4000 };
+};
+
+const emitAppToast = (message, type = 'error', ttl = 4000) => {
+  if (typeof window === 'undefined') return;
+  window.dispatchEvent(new CustomEvent('app:toast', { detail: { message, type, ttl } }));
+};
+
+const emitSessionExpired = () => {
+  if (typeof window === 'undefined' || sessionExpiredEmitted) return;
+  sessionExpiredEmitted = true;
+  window.dispatchEvent(new CustomEvent('app:session-expired'));
+};
+
+export const resetSessionExpiredState = () => {
+  sessionExpiredEmitted = false;
+};
+
 // Request interceptor to add auth token
 api.interceptors.request.use(
   (config) => {
@@ -58,12 +120,21 @@ api.interceptors.response.use(
 
     const requestUrl = originalRequest?.url || '';
     const isAuthRequest = requestUrl.includes('/auth/login/') || requestUrl.includes('/auth/refresh/');
+    const method = (originalRequest?.method || 'get').toLowerCase();
+    const isMutatingRequest = ['post', 'put', 'patch', 'delete'].includes(method);
+
     if (error.response?.status === 401 && !originalRequest._retry && !isAuthRequest) {
       originalRequest._retry = true;
 
       try {
         const refreshToken = localStorage.getItem('refresh_token');
         if (!refreshToken) {
+          localStorage.removeItem('access_token');
+          localStorage.removeItem('refresh_token');
+          localStorage.removeItem('user');
+          emitSessionExpired();
+          emitAppToast('Session expired. Please log in again.');
+          window.location.href = '/login';
           return Promise.reject(error);
         }
         const response = await axios.post(`${API_BASE_URL}/auth/refresh/`, {
@@ -72,6 +143,7 @@ api.interceptors.response.use(
 
         const { access } = response.data;
         localStorage.setItem('access_token', access);
+        resetSessionExpiredState();
 
         originalRequest.headers.Authorization = `Bearer ${access}`;
         return axios(originalRequest);
@@ -79,11 +151,18 @@ api.interceptors.response.use(
         localStorage.removeItem('access_token');
         localStorage.removeItem('refresh_token');
         localStorage.removeItem('user');
+        emitSessionExpired();
+        emitAppToast('Session expired. Please log in again.');
         if (!isAuthRequest) {
           window.location.href = '/login';
         }
         return Promise.reject(refreshError);
       }
+    }
+
+    if (isMutatingRequest && !isAuthRequest) {
+      const normalizedError = normalizeErrorPayloadForUi(error);
+      emitAppToast(normalizedError.message, normalizedError.type, normalizedError.ttl);
     }
 
     return Promise.reject(error);

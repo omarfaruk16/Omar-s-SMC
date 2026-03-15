@@ -23,6 +23,10 @@ from django.urls import re_path
 from rest_framework_simplejwt.views import TokenRefreshView
 from users.authentication import CustomTokenObtainPairView
 from users.views import ForgotPasswordView, VerifyOTPView, ResetPasswordView
+from config.api_error_handlers import api_handler404, api_handler500
+
+handler404 = api_handler404
+handler500 = api_handler500
 
 urlpatterns = [
     path("admin/", admin.site.urls),

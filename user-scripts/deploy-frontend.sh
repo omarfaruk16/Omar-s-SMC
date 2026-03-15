@@ -12,7 +12,8 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 cd "$FRONTEND_DIR"
 
 # Copy production env
-echo "→ Overwriting .env from .env.example.production..."
+echo "→ Removing old .env and creating fresh one from .env.example.production..."
+rm -f .env
 cp .env.example.production .env
 echo "  ✓ .env configured"
 

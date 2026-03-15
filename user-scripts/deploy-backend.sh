@@ -21,9 +21,10 @@ source venv/bin/activate
 echo "→ Virtual environment activated"
 
 # ── Environment file ──────────────────────────────────────────────────────────
-echo "→ Overwriting .env with .env.example.production..."
+echo "→ Removing old .env and creating fresh one from .env.example.production..."
+rm -f .env
 cp .env.example.production .env
-echo "  ✓ .env updated. Ensure you inject any runtime secrets needed."
+echo "  ✓ .env created. Ensure you inject any runtime secrets needed."
 
 # ── System dependencies (WeasyPrint, Pillow) ──────────────────────────────────
 echo "→ Installing system dependencies..."
