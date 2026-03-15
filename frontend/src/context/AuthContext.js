@@ -14,14 +14,59 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check if user is logged in on mount
-    const storedUser = localStorage.getItem('user');
-    const token = localStorage.getItem('access_token');
-    
-    if (storedUser && token) {
-      setUser(JSON.parse(storedUser));
-    }
-    setLoading(false);
+    let cancelled = false;
+
+    const restoreSession = async () => {
+      const storedUser = localStorage.getItem('user');
+      const token = localStorage.getItem('access_token');
+      const refreshToken = localStorage.getItem('refresh_token');
+
+      // Fast path: cached user + access token available.
+      if (storedUser && token) {
+        try {
+          const parsedUser = JSON.parse(storedUser);
+          if (!cancelled) {
+            setUser(parsedUser);
+            setLoading(false);
+          }
+          return;
+        } catch (_) {
+          localStorage.removeItem('user');
+        }
+      }
+
+      // No auth material available.
+      if (!token && !refreshToken) {
+        if (!cancelled) setLoading(false);
+        return;
+      }
+
+      // Recover user from token pair (or refresh flow) after full-page redirects.
+      try {
+        const profileResponse = await authAPI.getProfile();
+        const userData = profileResponse?.data?.user || profileResponse?.data;
+
+        if (userData && typeof userData === 'object') {
+          localStorage.setItem('user', JSON.stringify(userData));
+          resetSessionExpiredState();
+          if (!cancelled) setUser(userData);
+        } else {
+          throw new Error('Invalid profile payload');
+        }
+      } catch (_) {
+        localStorage.removeItem('access_token');
+        localStorage.removeItem('refresh_token');
+        localStorage.removeItem('user');
+        if (!cancelled) setUser(null);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+
+    restoreSession();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { admissionAPI } from '../services/api';
 import { useToast } from '../context/ToastContext';
 import { useAuth } from '../context/AuthContext';
@@ -13,14 +13,33 @@ const PRICE_MAP = {
 
 const AdmissionFormStudent = () => {
   const toast = useToast();
+  const location = useLocation();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const [loading, setLoading] = useState(true);
   const [student, setStudent] = useState(null);
   const [subjects, setSubjects] = useState([]);
   const [selection, setSelection] = useState('all');
   const [selectedSubjects, setSelectedSubjects] = useState([]);
   const [paying, setPaying] = useState(false);
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const payment = params.get('payment');
+    const source = params.get('source');
+
+    if (!payment || source !== 'admission') return;
+
+    if (payment === 'success') {
+      toast.success('Admission payment completed successfully.');
+    } else {
+      toast.error('Admission payment failed or was cancelled. Please try again.');
+    }
+
+    ['payment', 'source', 'tran_id', 'val_id'].forEach((key) => params.delete(key));
+    const query = params.toString();
+    navigate(`${location.pathname}${query ? `?${query}` : ''}`, { replace: true });
+  }, [location.pathname, location.search, navigate, toast]);
 
   useEffect(() => {
     const load = async () => {
@@ -41,7 +60,7 @@ const AdmissionFormStudent = () => {
       }
     };
     load();
-  }, [user]);
+  }, [toast, user]);
 
   const amount = useMemo(() => PRICE_MAP[selection] || 0, [selection]);
 
@@ -74,6 +93,14 @@ const AdmissionFormStudent = () => {
       setPaying(false);
     }
   };
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 py-12 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600" />
+      </div>
+    );
+  }
 
   if (!user) {
     return (
