@@ -26,12 +26,12 @@ const TeacherCard = ({ teacher, isHeadTeacher = false }) => {
       }`}
     >
       {/* Image/Avatar Section - Compact Portrait */}
-      <div className="w-full h-32 bg-gray-100 flex items-center justify-center overflow-hidden flex-shrink-0">
+      <div className="w-48 h-48 bg-gray-100 flex items-center justify-center overflow-hidden flex-shrink-0">
         {teacher.image && !imageError ? (
           <img
             src={teacher.image}
             alt={teacher.full_name}
-            className="w-full h-full object-fill"
+            className="w-full h-full object-cover"
             onError={() => setImageError(true)}
           />
         ) : (
@@ -46,7 +46,7 @@ const TeacherCard = ({ teacher, isHeadTeacher = false }) => {
         {/* Head Teacher Badge */}
         {isHeadTeacher && (
           <div className="mb-1 inline-block bg-yellow-100 text-yellow-800 text-xs font-semibold px-2 py-0.5 rounded-full self-center">
-            Head Teacher
+            Principle
           </div>
         )}
 

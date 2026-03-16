@@ -83,38 +83,6 @@ const Home = () => {
     <div className="min-h-screen bg-gray-50">
       {/* Hero Section with Recent Notices and Image Slider */}
       <section className="container mx-auto px-4 py-8">
-        <div className="flex justify-end mb-4">
-          {shouldShowAdmissionCta ? (
-            <Link
-              to="/admission"
-              className="inline-flex items-center gap-2 px-5 py-2 rounded-lg bg-green-600 text-white font-semibold shadow hover:bg-green-700 transition"
-            >
-              Fillup Admission Form
-              <svg
-                className="w-4 h-4"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M4 4v16h16M8 12l4 4 4-4M12 16V4"
-                />
-              </svg>
-            </Link>
-          ) : (
-            !user && (
-              <button
-                disabled
-                className="inline-flex items-center px-5 py-2 rounded-lg bg-gray-300 text-gray-600 font-semibold cursor-not-allowed"
-              >
-                {admissionLoading ? "Preparing admission form..." : "Admission form unavailable"}
-              </button>
-            )
-          )}
-        </div>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Recent Notices Box */}
           <div className="lg:col-span-1">

@@ -8,7 +8,7 @@ if defined _OLD_CODEPAGE (
     "%SystemRoot%\System32\chcp.com" 65001 > nul
 )
 
-set VIRTUAL_ENV=C:\Users\ukoma\OneDrive\Desktop\Django\SMC\MY\school-sms\.venv
+set VIRTUAL_ENV=e:\Final Project (Full-stack)\Omar-s-SMC\.venv
 
 if not defined PROMPT set PROMPT=$P$G
 

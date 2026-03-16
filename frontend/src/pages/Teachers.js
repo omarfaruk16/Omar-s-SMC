@@ -40,9 +40,6 @@ const Teachers = () => {
         {/* Page Header */}
         <div className="text-center mb-12">
           <h1 className="text-4xl font-bold text-gray-900 mb-2">Our Teachers</h1>
-          <p className="text-lg text-gray-600">
-            Meet our dedicated team of educators
-          </p>
         </div>
 
         {loading ? (
@@ -80,7 +77,7 @@ const Teachers = () => {
             {headTeachers.length > 0 && (
               <div className="mb-16">
                 <h2 className="text-2xl font-bold text-gray-900 mb-8 text-center">
-                  Leadership
+                  Principle
                 </h2>
                 <div
                   className={`grid gap-4 mb-8 ${
@@ -107,7 +104,7 @@ const Teachers = () => {
               <div>
                 {headTeachers.length > 0 && (
                   <h2 className="text-2xl font-bold text-gray-900 mb-8 text-center">
-                    Faculty
+                    Other Teachers
                   </h2>
                 )}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">

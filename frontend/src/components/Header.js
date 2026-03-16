@@ -123,11 +123,6 @@ const Header = () => {
             <Link to="/notices" className="px-4 py-2 text-gray-700 hover:bg-blue-600 hover:text-white transition rounded">Notices</Link>
             <Link to="/contact" className="px-4 py-2 text-gray-700 hover:bg-blue-600 hover:text-white transition rounded">Contact</Link>
             
-            {canShowAdmission && admissionTemplate && (
-              <Link to="/admission" className="px-4 py-2 bg-green-600 text-white hover:bg-green-700 transition rounded">
-                Fillup Admission Form
-              </Link>
-            )}
           </div>
           
             {/* User Controls */}
