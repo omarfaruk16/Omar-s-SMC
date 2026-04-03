@@ -6,11 +6,11 @@
 export const DESIGNATION_OPTIONS = [
   'Assistant Teacher',
   'Senior Teacher',
-  'Head Teacher',
+  'Principle',
   'Lecturer',
   'Assistant Professor',
   'Associate Professor',
   'Professor',
 ];
 
-export const HEAD_TEACHER_DESIGNATION = 'Head Teacher';
+export const HEAD_TEACHER_DESIGNATION = 'Principle';

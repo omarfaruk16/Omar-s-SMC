@@ -21,9 +21,8 @@ const TeacherCard = ({ teacher, isHeadTeacher = false }) => {
 
   return (
     <div
-      className={`bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow flex flex-col h-full ${
-        isHeadTeacher ? 'ring-2 ring-yellow-400' : ''
-      }`}
+      className={`bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow flex flex-col h-full ${isHeadTeacher ? 'ring-2 ring-yellow-400' : ''
+        }`}
     >
       {/* Image/Avatar Section - Compact Portrait */}
       <div className="w-48 h-48 overflow-hidden flex-shrink-0">
