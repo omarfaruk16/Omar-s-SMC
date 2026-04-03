@@ -77,7 +77,7 @@ const Teachers = () => {
             {headTeachers.length > 0 && (
               <div className="mb-16">
                 <h2 className="text-2xl font-bold text-gray-900 mb-8 text-center">
-                  Principle
+                 Our Principle
                 </h2>
                 <div
                   className={`grid gap-4 mb-8 ${
