@@ -26,12 +26,12 @@ const TeacherCard = ({ teacher, isHeadTeacher = false }) => {
       }`}
     >
       {/* Image/Avatar Section - Compact Portrait */}
-      <div className="w-48 h-48 bg-gray-100 flex items-center justify-center overflow-hidden flex-shrink-0">
+      <div className="w-48 h-48 overflow-hidden flex-shrink-0">
         {teacher.image && !imageError ? (
           <img
             src={teacher.image}
             alt={teacher.full_name}
-            className="w-full h-full object-cover"
+            className="w-full h-full object-cover block"
             onError={() => setImageError(true)}
           />
         ) : (
