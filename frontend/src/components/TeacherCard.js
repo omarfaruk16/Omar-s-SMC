@@ -25,12 +25,14 @@ const TeacherCard = ({ teacher, isHeadTeacher = false }) => {
         }`}
     >
       {/* Image/Avatar Section - Compact Portrait */}
-      <div className="w-48 h-48 overflow-hidden flex-shrink-0">
+      <div className="relative w-48 h-48 overflow-hidden flex-shrink-0 rounded-t-lg">
         {teacher.image && !imageError ? (
           <img
             src={teacher.image}
             alt={teacher.full_name}
-            className="w-full h-full object-cover block"
+            /* object-cover ensures the container is filled without stretching */
+            /* object-top is often better for portraits to avoid cutting off heads */
+            className="w-full h-full object-cover object-top block"
             onError={() => setImageError(true)}
           />
         ) : (

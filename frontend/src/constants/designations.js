@@ -11,6 +11,14 @@ export const DESIGNATION_OPTIONS = [
   'Assistant Professor',
   'Associate Professor',
   'Professor',
+  'Demonstrator',
+  'Physical teacher',
+  'Office staff',
+  'Office assistant',
+  'Seminar assistant',
+  'Lab assistant',
+  'Computer operator',
+  'Night guard',
 ];
 
 export const HEAD_TEACHER_DESIGNATION = 'Principle';
