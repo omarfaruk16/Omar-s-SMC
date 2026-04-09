@@ -173,12 +173,6 @@ const Login = () => {
               <span className="px-2 bg-gray-50 text-gray-500">Test Credentials</span>
             </div>
           </div>
-
-          <div className="mt-4 space-y-2 text-xs text-gray-600 bg-blue-50 p-4 rounded-lg">
-            <p><strong>Admin:</strong> admin@school.com / admin123</p>
-            <p><strong>Teacher:</strong> teacher@test.com / password123</p>
-            <p><strong>Student:</strong> student@test.com / password123</p>
-          </div>
         </div>
       </div>
     </div>
