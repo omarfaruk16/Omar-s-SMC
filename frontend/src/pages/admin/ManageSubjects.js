@@ -55,8 +55,7 @@ const ManageSubjects = () => {
       <div className="container mx-auto px-4">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold text-gray-900">Manage Subjects</h1>
-          {/* Create button hidden to enforce subject creation via Class Details */}
-          {/* <button onClick={openCreate} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">+ Add Subject</button> */}
+          <button onClick={openCreate} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">+ Add Subject</button>
         </div>
 
         {showForm && (
