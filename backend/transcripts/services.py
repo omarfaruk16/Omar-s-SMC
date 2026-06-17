@@ -5,10 +5,14 @@ from django.conf import settings
 from django.template.loader import render_to_string
 from django.utils import timezone
 
-from weasyprint import HTML, CSS
-from weasyprint.text.fonts import FontConfiguration
-
 from admissions.models import AdmissionFormTemplate
+
+
+def _weasy_html():
+    """Lazily import WeasyPrint so a missing native lib (libgobject/Pango/Cairo)
+    only breaks PDF generation — not the entire application at import time."""
+    from weasyprint import HTML
+    return HTML
 
 
 # Get the directory where this file is located
@@ -188,7 +192,7 @@ def generate_testimonial_pdf(testimonial_request) -> Tuple[str, bytes]:
         
         html_string = render_to_string('transcripts/testimonial.html', context)
         
-        pdf_file = HTML(string=html_string, base_url=settings.BASE_DIR).write_pdf()
+        pdf_file = _weasy_html()(string=html_string, base_url=settings.BASE_DIR).write_pdf()
         
         student = testimonial_request.student
         name_en_first = student.user.first_name or "student"
@@ -221,7 +225,7 @@ def generate_marksheet_pdf(student, exam_title, class_name, marks_qs) -> Tuple[s
     }
     
     html_string = render_to_string('transcripts/marksheet.html', context)
-    pdf_file = HTML(string=html_string, base_url=settings.BASE_DIR).write_pdf()
+    pdf_file = _weasy_html()(string=html_string, base_url=settings.BASE_DIR).write_pdf()
     
     filename = f"marksheet-{student.user.username}.pdf"
     return filename, pdf_file
@@ -240,7 +244,7 @@ def generate_exam_routine_pdf(exam_title, class_name, schedules) -> Tuple[str, b
     }
     
     html_string = render_to_string('transcripts/routine.html', context)
-    pdf_file = HTML(string=html_string, base_url=settings.BASE_DIR).write_pdf()
+    pdf_file = _weasy_html()(string=html_string, base_url=settings.BASE_DIR).write_pdf()
     return f"routine-{class_name}.pdf", pdf_file
 
 
@@ -258,5 +262,5 @@ def generate_exam_admit_card_pdf(student, exam_title, schedules) -> Tuple[str, b
     }
     
     html_string = render_to_string('transcripts/admit_card.html', context)
-    pdf_file = HTML(string=html_string, base_url=settings.BASE_DIR).write_pdf()
+    pdf_file = _weasy_html()(string=html_string, base_url=settings.BASE_DIR).write_pdf()
     return f"admit-card-{student.user.username}.pdf", pdf_file

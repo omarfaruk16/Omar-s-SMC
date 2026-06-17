@@ -42,7 +42,7 @@ class ClassMaterialViewSet(viewsets.ModelViewSet):
                 student = user.student_profile
                 if student.student_class:
                     return ClassMaterial.objects.filter(class_assigned=student.student_class)
-            except:
+            except Exception:
                 pass
         
         return ClassMaterial.objects.none()

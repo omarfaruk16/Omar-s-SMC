@@ -19,3 +19,17 @@ backend/media/*
 !backend/media/
 !backend/media/**/
 !backend/media/**/.gitkeep
+
+# Database & logs
+backend/db.sqlite3
+backend/db.sqlite3-journal
+*.log
+
+# Node / React
+node_modules/
+frontend/build/
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/

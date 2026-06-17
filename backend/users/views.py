@@ -11,6 +11,7 @@ from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 from django.contrib.auth import get_user_model
 from django.urls import reverse
@@ -155,7 +156,14 @@ class ChangePasswordView(APIView):
         serializer.is_valid(raise_exception=True)
 
         user = request.user
-        # No current password check needed - users can change without it
+        # Verify the current password before allowing a change.
+        current_password = serializer.validated_data.get('current_password')
+        if not user.check_password(current_password or ''):
+            return Response(
+                {'current_password': 'Current password is incorrect.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         user.set_password(serializer.validated_data['new_password'])
         user.save()
 
@@ -175,6 +183,8 @@ def _generate_otp() -> str:
 
 class ForgotPasswordView(APIView):
     permission_classes = [AllowAny]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'otp'
 
     def post(self, request):
         serializer = ForgotPasswordSerializer(data=request.data)
@@ -212,6 +222,8 @@ class ForgotPasswordView(APIView):
 
 class VerifyOTPView(APIView):
     permission_classes = [AllowAny]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'otp'
 
     def post(self, request):
         serializer = VerifyOTPSerializer(data=request.data)
@@ -251,6 +263,8 @@ class VerifyOTPView(APIView):
 
 class ResetPasswordView(APIView):
     permission_classes = [AllowAny]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'otp'
 
     def post(self, request):
         email = (request.data.get('email') or '').strip().lower()
@@ -559,7 +573,7 @@ class StudentViewSet(viewsets.ModelViewSet):
         elif user.role == 'teacher':
             try:
                 teacher = user.teacher_profile
-            except:
+            except Exception:
                 return Response({'error': 'Teacher profile not found'}, status=status.HTTP_404_NOT_FOUND)
             from academics.models import TeacherSubjectAssignment
             if not TeacherSubjectAssignment.objects.filter(
@@ -600,7 +614,7 @@ class PublicTeacherList(generics.ListAPIView):
         elif user.role == 'teacher':
             try:
                 teacher = user.teacher_profile
-            except:
+            except Exception:
                 return Response({'error': 'Teacher profile not found'}, status=status.HTTP_404_NOT_FOUND)
             if not teacher.assigned_classes.filter(id=class_id).exists():
                 return Response({'error': 'Not assigned to this class'}, status=status.HTTP_403_FORBIDDEN)

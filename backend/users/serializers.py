@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from django.db import IntegrityError, transaction
 from django.contrib.auth import get_user_model
+from django.contrib.auth.password_validation import validate_password
 from .models import Teacher, Student
 from classes.models import Class
 from academics.models import Subject, TeacherSubjectAssignment
@@ -106,6 +107,10 @@ class TeacherRegistrationSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError('A user with this email already exists.')
         return email
 
+    def validate_password(self, value):
+        validate_password(value)
+        return value
+
     def validate_teacher_id(self, value):
         if value is None:
             return None
@@ -178,13 +183,7 @@ class TeacherRegistrationSerializer(serializers.ModelSerializer):
         # If parsing failed, attempt to parse from initial_data
         if (not assignments) and hasattr(self, 'initial_data') and 'class_subject_assignments' in self.initial_data:
             assignments = _parse_assignments(self.initial_data.get('class_subject_assignments'))
-        
-        # Debug logging
-        import logging
-        logger = logging.getLogger(__name__)
-        logger.error(f"DEBUG - Parsed assignments: {assignments}")
-        logger.error(f"DEBUG - Type: {type(assignments)}")
-        
+
         attrs['class_subject_assignments'] = assignments
         preferred_class = attrs.get('preferred_class')
         preferred_subject = attrs.get('preferred_subject')
@@ -198,9 +197,6 @@ class TeacherRegistrationSerializer(serializers.ModelSerializer):
             
             for idx, assignment in enumerate(assignments):
                 class_id, subject_id, normalized = _extract_ids(assignment)
-                # Debug logging
-                logger.error(f"DEBUG - Assignment {idx}: class_id={class_id}, subject_id={subject_id}, normalized={normalized}")
-                
                 assignments[idx] = normalized
                 if not isinstance(normalized, dict):
                     raise serializers.ValidationError({
@@ -391,7 +387,11 @@ class StudentRegistrationSerializer(serializers.ModelSerializer):
         if User.objects.filter(email__iexact=email).exists():
             raise serializers.ValidationError('A user with this email already exists.')
         return email
-    
+
+    def validate_password(self, value):
+        validate_password(value)
+        return value
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         from classes.models import Class
@@ -740,14 +740,14 @@ class UserProfileSerializer(serializers.ModelSerializer):
 
 
 class ChangePasswordSerializer(serializers.Serializer):
-    current_password = serializers.CharField(write_only=True, required=False, allow_blank=True)
+    current_password = serializers.CharField(write_only=True)
     new_password = serializers.CharField(write_only=True)
     new_password_confirm = serializers.CharField(write_only=True)
 
     def validate(self, attrs):
         if attrs['new_password'] != attrs['new_password_confirm']:
             raise serializers.ValidationError({'new_password_confirm': 'Passwords do not match.'})
-        # Allow weak passwords
+        validate_password(attrs['new_password'], self.context.get('user'))
         return attrs
 
 
@@ -769,5 +769,5 @@ class ResetPasswordSerializer(serializers.Serializer):
     def validate(self, attrs):
         if attrs['new_password'] != attrs['new_password_confirm']:
             raise serializers.ValidationError({'new_password_confirm': 'Passwords do not match.'})
-        # Allow weak passwords
+        validate_password(attrs['new_password'], self.context.get('user'))
         return attrs

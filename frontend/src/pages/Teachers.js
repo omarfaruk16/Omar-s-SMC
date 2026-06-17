@@ -1,7 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { publicAPI } from '../services/api';
 import TeacherCard from '../components/TeacherCard';
-import { HEAD_TEACHER_DESIGNATION } from '../constants/designations';
+import {
+  HEAD_TEACHER_DESIGNATION,
+  groupTeachersByHierarchy,
+} from '../constants/designations';
 
 const Teachers = () => {
   const [teachers, setTeachers] = useState([]);
@@ -18,21 +21,15 @@ const Teachers = () => {
       setError('');
       const response = await publicAPI.getApprovedTeachers();
       setTeachers(response.data || []);
-    } catch (error) {
-      console.error('Error fetching teachers:', error);
+    } catch (err) {
+      console.error('Error fetching teachers:', err);
       setError('Failed to load teachers. Please try again later.');
     } finally {
       setLoading(false);
     }
   };
 
-  // Separate Head Teachers from others
-  const headTeachers = teachers.filter(
-    (teacher) => teacher.designation === HEAD_TEACHER_DESIGNATION
-  );
-  const otherTeachers = teachers.filter(
-    (teacher) => teacher.designation !== HEAD_TEACHER_DESIGNATION
-  );
+  const tiers = groupTeachersByHierarchy(teachers);
 
   return (
     <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
@@ -40,6 +37,7 @@ const Teachers = () => {
         {/* Page Header */}
         <div className="text-center mb-12">
           <h1 className="text-4xl font-bold text-gray-900 mb-2">Our Teachers</h1>
+          <p className="text-gray-500">Meet the people behind our college</p>
         </div>
 
         {loading ? (
@@ -51,18 +49,8 @@ const Teachers = () => {
           </div>
         ) : error ? (
           <div className="max-w-md w-full mx-auto bg-white rounded-lg shadow-md p-8 text-center">
-            <svg
-              className="mx-auto h-12 w-12 text-red-600 mb-4"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 8v4m0 4v.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-              />
+            <svg className="mx-auto h-12 w-12 text-red-600 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4v.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
             <h2 className="text-xl font-bold text-gray-900 mb-2">Oops!</h2>
             <p className="text-gray-600">{error}</p>
@@ -72,53 +60,44 @@ const Teachers = () => {
             <p className="text-gray-600 text-lg">No teachers found.</p>
           </div>
         ) : (
-          <>
-            {/* Head Teachers Section */}
-            {headTeachers.length > 0 && (
-              <div className="mb-16">
-                <h2 className="text-2xl font-bold text-gray-900 mb-8 text-center">
-                 Our Principle
-                </h2>
-                <div
-                  className={`grid gap-4 mb-8 ${
-                    headTeachers.length === 1
-                      ? 'grid-cols-1 sm:grid-cols-1 md:grid-cols-1 max-w-xs mx-auto'
-                      : headTeachers.length === 2
-                      ? 'grid-cols-1 sm:grid-cols-2 max-w-2xl mx-auto'
-                      : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3'
-                  }`}
-                >
-                  {headTeachers.map((teacher) => (
-                    <TeacherCard
-                      key={teacher.id}
-                      teacher={teacher}
-                      isHeadTeacher={true}
-                    />
-                  ))}
-                </div>
-              </div>
-            )}
+          <div className="space-y-14">
+            {tiers.map((tier) => {
+              const isHead = tier.key === 'principal';
+              const count = tier.teachers.length;
+              // Center small tiers; let larger tiers fill a responsive grid.
+              const gridCols =
+                count === 1
+                  ? 'grid-cols-1 max-w-xs'
+                  : count === 2
+                  ? 'grid-cols-2 max-w-xl'
+                  : count === 3
+                  ? 'grid-cols-2 sm:grid-cols-3 max-w-3xl'
+                  : 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 max-w-6xl';
 
-            {/* All Other Teachers Section */}
-            {otherTeachers.length > 0 && (
-              <div>
-                {headTeachers.length > 0 && (
-                  <h2 className="text-2xl font-bold text-gray-900 mb-8 text-center">
-                    Other Teachers
-                  </h2>
-                )}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
-                  {otherTeachers.map((teacher) => (
-                    <TeacherCard
-                      key={teacher.id}
-                      teacher={teacher}
-                      isHeadTeacher={false}
-                    />
-                  ))}
-                </div>
-              </div>
-            )}
-          </>
+              return (
+                <section key={tier.key}>
+                  <div className="mb-8 text-center">
+                    <h2 className="inline-block text-2xl font-bold text-gray-900">
+                      {tier.title}
+                    </h2>
+                    <div className="mx-auto mt-2 h-1 w-16 rounded-full bg-blue-600" />
+                  </div>
+
+                  <div className={`grid ${gridCols} gap-5 sm:gap-6 mx-auto`}>
+                    {tier.teachers.map((teacher) => (
+                      <TeacherCard
+                        key={teacher.id}
+                        teacher={teacher}
+                        isHeadTeacher={
+                          isHead || teacher.designation === HEAD_TEACHER_DESIGNATION
+                        }
+                      />
+                    ))}
+                  </div>
+                </section>
+              );
+            })}
+          </div>
         )}
       </div>
     </div>

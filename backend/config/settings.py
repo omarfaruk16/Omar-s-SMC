@@ -23,7 +23,7 @@ MODE = config('MODE', default='development')
 # In production, let Nginx serve media files; in development, Django serves them
 SERVE_MEDIA = config('SERVE_MEDIA', default=(MODE != 'production'), cast=bool)
 
-ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost,127.0.0.1').split(',')
+ALLOWED_HOSTS = [h.strip() for h in config('ALLOWED_HOSTS', default='localhost,127.0.0.1').split(',') if h.strip()]
 
 
 # Application definition
@@ -98,7 +98,8 @@ if MODE == 'production':
             'ENGINE': 'django.db.backends.postgresql',
             'NAME': config('DB_NAME', default='smsp'),
             'USER': config('DB_USER', default='omar'),
-            'PASSWORD': config('DB_PASSWORD', default='omarsstrongpassword123'),
+            # No hardcoded credential default — must be supplied via environment.
+            'PASSWORD': config('DB_PASSWORD'),
             'HOST': config('DB_HOST', default='localhost'),
             'PORT': config('DB_PORT', default='5432'),
             'CONN_MAX_AGE': 600,
@@ -118,8 +119,10 @@ else:
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
 
 AUTH_PASSWORD_VALIDATORS = [
-    # Password validators disabled to allow weak passwords
-    # Users can use any password they want
+    {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
+    {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator"},
+    {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
+    {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
 ]
 
 
@@ -171,8 +174,22 @@ REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated',
     ],
-    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
-    'PAGE_SIZE': 20,
+    # NOTE: Global pagination intentionally disabled. The React admin lists read
+    # responses as plain arrays and do not follow `next` links, so a global
+    # PAGE_SIZE silently hid every record past the first page (e.g. subjects,
+    # users, classes capped at 20). Endpoints that need paging can opt in with
+    # an explicit `pagination_class`.
+    'DEFAULT_THROTTLE_CLASSES': [
+        'rest_framework.throttling.AnonRateThrottle',
+        'rest_framework.throttling.UserRateThrottle',
+        'rest_framework.throttling.ScopedRateThrottle',
+    ],
+    'DEFAULT_THROTTLE_RATES': {
+        'anon': '60/min',
+        'user': '1000/hour',
+        'auth': '10/min',   # login endpoint
+        'otp': '5/min',     # forgot-password / verify-otp / reset
+    },
 }
 
 # JWT Configuration
@@ -241,3 +258,37 @@ TESTIMONIAL_FEE_AMOUNT = config('TESTIMONIAL_FEE_AMOUNT', default=TRANSCRIPT_FEE
 WEBPUSH_PUBLIC_KEY = config('WEBPUSH_PUBLIC_KEY', default='')
 WEBPUSH_PRIVATE_KEY = config('WEBPUSH_PRIVATE_KEY', default='')
 WEBPUSH_SUBJECT = config('WEBPUSH_SUBJECT', default='mailto:admin@example.com')
+
+# Security hardening — applied automatically when DEBUG is off (production)
+if not DEBUG:
+    _insecure_key = (
+        not SECRET_KEY
+        or SECRET_KEY.startswith('django-insecure-')
+        or SECRET_KEY.lower().startswith('your-')
+        or 'secret-key-here' in SECRET_KEY.lower()
+        or len(SECRET_KEY) < 32
+    )
+    if _insecure_key:
+        raise RuntimeError(
+            'Refusing to start with DEBUG=False and an insecure/placeholder SECRET_KEY. '
+            'Generate one with: python -c "from django.core.management.utils import '
+            'get_random_secret_key as g; print(g())" and set it in the environment.'
+        )
+    SECURE_SSL_REDIRECT = config('SECURE_SSL_REDIRECT', default=True, cast=bool)
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SESSION_COOKIE_HTTPONLY = True
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+    SECURE_HSTS_SECONDS = config('SECURE_HSTS_SECONDS', default=31536000, cast=int)
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
+    X_FRAME_OPTIONS = 'DENY'
+
+# Console logging so unhandled errors surface in production
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {'verbose': {'format': '{asctime} {levelname} {name} {message}', 'style': '{'}},
+    'handlers': {'console': {'class': 'logging.StreamHandler', 'formatter': 'verbose'}},
+    'root': {'handlers': ['console'], 'level': 'INFO'},
+}

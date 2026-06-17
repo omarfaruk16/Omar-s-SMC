@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect, useMemo } from 'react';
 
 const ToastContext = createContext(null);
 
@@ -35,12 +35,15 @@ export const ToastProvider = ({ children }) => {
     if (ttl > 0) setTimeout(() => remove(id), ttl);
   }, [remove]);
 
-  const api = {
+  // Memoize so the context value keeps a stable reference across renders.
+  // Without this, every toast re-creates `api`, which re-runs every
+  // `useEffect(..., [toast])` and causes infinite fetch/toast loops.
+  const api = useMemo(() => ({
     success: (msg, ttl) => push(msg, 'success', ttl),
     error: (msg, ttl) => push(normalizeError(msg), 'error', ttl),
     errorFrom: (err, fallback, ttl) => push(normalizeError(err, fallback), 'error', ttl),
     info: (msg, ttl) => push(msg, 'info', ttl),
-  };
+  }), [push, normalizeError]);
 
   useEffect(() => {
     const onAppToast = (event) => {

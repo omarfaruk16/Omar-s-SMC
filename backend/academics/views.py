@@ -17,6 +17,9 @@ from users.models import Student
 class SubjectViewSet(viewsets.ModelViewSet):
     queryset = Subject.objects.all()
     serializer_class = SubjectSerializer
+    # Subjects are a small, bounded reference set the admin needs in full.
+    # Without this, the global PAGE_SIZE=20 silently caps the list at 20 items.
+    pagination_class = None
 
     def get_permissions(self):
         if self.action in ['list', 'retrieve']:
@@ -158,14 +161,14 @@ class TimetableSlotViewSet(viewsets.ModelViewSet):
             try:
                 teacher = user.teacher_profile
                 return qs.filter(teacher=teacher) | qs.filter(class_assigned__in=teacher.assigned_classes.all())
-            except:
+            except Exception:
                 return TimetableSlot.objects.none()
         elif user.role == 'student':
             try:
                 student = user.student_profile
                 if student.student_class:
                     return qs.filter(class_assigned=student.student_class)
-            except:
+            except Exception:
                 pass
         return TimetableSlot.objects.none()
 
@@ -202,13 +205,13 @@ class MarkViewSet(viewsets.ModelViewSet):
                 class_ids = assignments.values_list('class_assigned_id', flat=True)
                 subject_ids = assignments.values_list('subject_id', flat=True)
                 qs = qs.filter(class_assigned_id__in=class_ids, subject_id__in=subject_ids)
-            except:
+            except Exception:
                 return Mark.objects.none()
         elif user.role == 'student':
             try:
                 student = user.student_profile
                 qs = qs.filter(student=student, published=True)
-            except:
+            except Exception:
                 return Mark.objects.none()
         exam_id = self.request.query_params.get('exam_id')
         if exam_id:
@@ -460,7 +463,7 @@ class ExamViewSet(viewsets.ModelViewSet):
                 
                 qs = qs.filter(q_obj).distinct()
                 qs = qs.filter(published=True)
-            except:
+            except Exception:
                 return Exam.objects.none()
         elif user.role == 'student':
             try:
@@ -469,7 +472,7 @@ class ExamViewSet(viewsets.ModelViewSet):
                     qs = qs.filter(class_assigned=student.student_class, published=True)
                 else:
                     return Exam.objects.none()
-            except:
+            except Exception:
                 return Exam.objects.none()
         else:
             return Exam.objects.none()
@@ -629,7 +632,7 @@ class TeacherSubjectAssignmentViewSet(viewsets.ModelViewSet):
             try:
                 teacher = user.teacher_profile
                 return qs.filter(teacher=teacher)
-            except:
+            except Exception:
                 return TeacherSubjectAssignment.objects.none()
         else:
             # Students can view to see which teacher teaches which subject

@@ -1,4 +1,5 @@
 import json
+import logging
 import uuid
 from decimal import Decimal, InvalidOperation
 from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
@@ -23,6 +24,7 @@ from rest_framework_simplejwt.tokens import AccessToken
 from django.contrib.auth import get_user_model
 
 User = get_user_model()
+logger = logging.getLogger(__name__)
 
 
 def _sslcommerz_base_url():
@@ -143,7 +145,7 @@ class FeeViewSet(viewsets.ModelViewSet):
                     qs = Fee.objects.filter(class_assigned=student.student_class)
                     # Filter fees assigned specifically to this student or class-wide fees (no student assigned)
                     return qs.filter(models.Q(student=student) | models.Q(student__isnull=True))
-            except:
+            except Exception:
                 pass
         
         return Fee.objects.none()
@@ -247,10 +249,11 @@ class FeeViewSet(viewsets.ModelViewSet):
             
             serializer = FeeStudentSerializer(fee_data, many=True)
             return Response(serializer.data)
-        
-        except Exception as e:
+
+        except Exception:
+            logger.exception('Failed to build my_fees for user %s', request.user.id)
             return Response(
-                {'error': str(e)},
+                {'error': 'Unable to load fees. Please try again later.'},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
@@ -277,7 +280,7 @@ class PaymentViewSet(viewsets.ModelViewSet):
             try:
                 student = user.student_profile
                 return Payment.objects.filter(student=student)
-            except:
+            except Exception:
                 pass
         
         return Payment.objects.none()
@@ -292,7 +295,7 @@ class PaymentViewSet(viewsets.ModelViewSet):
         
         try:
             student = request.user.student_profile
-        except:
+        except Exception:
             return Response(
                 {'error': 'Student profile not found'},
                 status=status.HTTP_404_NOT_FOUND
