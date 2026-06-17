@@ -21,10 +21,13 @@ source venv/bin/activate
 echo "→ Virtual environment activated"
 
 # ── Environment file ──────────────────────────────────────────────────────────
-echo "→ Removing old .env and creating fresh one from .env.example.production..."
-rm -f .env
-cp .env.example.production .env
-echo "  ✓ .env created. Ensure you inject any runtime secrets needed."
+if [ ! -f ".env" ]; then
+    echo "→ No .env found — copying from .env.example.production as a starting template."
+    echo "  ⚠️  Edit backend/.env and set real values before the app will start."
+    cp .env.example.production .env
+else
+    echo "→ .env already exists — keeping it (not overwriting with template)."
+fi
 
 # ── System dependencies (WeasyPrint, Pillow) ──────────────────────────────────
 echo "→ Installing system dependencies..."
